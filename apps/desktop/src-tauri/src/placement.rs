@@ -163,6 +163,8 @@ fn geometry(
     || !request.offset_y.is_finite()
     || request.offset_x < 0.0
     || request.offset_y < 0.0
+    || request.offset_x > 50.0
+    || request.offset_y > 50.0
     || !scale.is_finite()
     || scale <= 0.0
     || bounds.width == 0
@@ -197,14 +199,14 @@ fn geometry(
         position.x,
         bounds.width,
         size.width,
-        request.offset_x * scale,
+        request.offset_x * f64::from(bounds.width) / 100.0,
         horizontal,
       ),
       axis_position(
         position.y,
         bounds.height,
         size.height,
-        request.offset_y * scale,
+        request.offset_y * f64::from(bounds.height) / 100.0,
         vertical,
       ),
     ),
@@ -424,8 +426,8 @@ mod tests {
     PlacementRequest {
       monitor: None,
       anchor,
-      offset_x: 16.0,
-      offset_y: 16.0,
+      offset_x: 0.0,
+      offset_y: 0.0,
       width: 200.0,
       height: 100.0,
     }
@@ -433,20 +435,24 @@ mod tests {
 
   #[test]
   fn all_anchors_use_target_dpi_and_negative_monitor_origin() {
+    let mut request = request(Anchor::TopLeft);
+    request.offset_x = 10.0;
+    request.offset_y = 20.0;
     let anchors = [
-      (Anchor::TopLeft, -1888, 32),
-      (Anchor::TopCenter, -1160, 32),
-      (Anchor::TopRight, -432, 32),
-      (Anchor::MiddleLeft, -1888, 440),
+      (Anchor::TopLeft, -1728, 216),
+      (Anchor::TopCenter, -1160, 216),
+      (Anchor::TopRight, -592, 216),
+      (Anchor::MiddleLeft, -1728, 440),
       (Anchor::Center, -1160, 440),
-      (Anchor::MiddleRight, -432, 440),
-      (Anchor::BottomLeft, -1888, 848),
-      (Anchor::BottomCenter, -1160, 848),
-      (Anchor::BottomRight, -432, 848),
+      (Anchor::MiddleRight, -592, 440),
+      (Anchor::BottomLeft, -1728, 664),
+      (Anchor::BottomCenter, -1160, 664),
+      (Anchor::BottomRight, -592, 664),
     ];
     for (anchor, x, y) in anchors {
+      request.anchor = anchor;
       let (position, size) = geometry(
-        &request(anchor),
+        &request,
         PhysicalPosition::new(-1920, 0),
         PhysicalSize::new(1920, 1080),
         2.0,
@@ -462,8 +468,8 @@ mod tests {
     let mut request = request(Anchor::BottomRight);
     request.width = 5000.0;
     request.height = 5000.0;
-    request.offset_x = 5000.0;
-    request.offset_y = 5000.0;
+    request.offset_x = 50.0;
+    request.offset_y = 50.0;
     let (position, size) = geometry(
       &request,
       PhysicalPosition::new(1920, -500),
@@ -483,7 +489,7 @@ mod tests {
       1.5,
     )
     .expect("clamped margins");
-    assert_eq!(position, PhysicalPosition::new(1920, -500));
+    assert_eq!(position, PhysicalPosition::new(2258, -292));
     assert_eq!(size, PhysicalSize::new(302, 152));
   }
 
@@ -499,10 +505,10 @@ mod tests {
       1.25,
     )
     .expect("fractional DPI geometry");
-    assert_eq!(position, PhysicalPosition::new(2928, 73));
+    assert_eq!(position, PhysicalPosition::new(2948, 93));
     assert_eq!(size, PhysicalSize::new(252, 127));
-    assert_eq!(position.x + size.width as i32, 3180);
-    assert_eq!(position.y + size.height as i32, 200);
+    assert_eq!(position.x + size.width as i32, 3200);
+    assert_eq!(position.y + size.height as i32, 220);
   }
 
   #[test]
@@ -534,6 +540,8 @@ mod tests {
     let mut request = request(Anchor::BottomRight);
     request.width = 201.0;
     request.height = 101.0;
+    request.offset_x = 10.0;
+    request.offset_y = 20.0;
     for target_scale in [1.0, 2.0] {
       let (position, size) = geometry(
         &request,
@@ -543,7 +551,7 @@ mod tests {
       )
       .expect("target monitor geometry");
       let (position, size) = logical_geometry(position, size, target_scale);
-      assert_eq!(position, LogicalPosition::new(-217.0, 983.0));
+      assert_eq!(position, LogicalPosition::new(-345.0, 819.0));
       assert_eq!(size, LogicalSize::new(201.0, 101.0));
     }
   }

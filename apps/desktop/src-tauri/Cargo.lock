@@ -2813,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "overlayed"
-version = "0.0.0"
+version = "0.7.0-beta"
 dependencies = [
  "anyhow",
  "cocoa 0.26.0",

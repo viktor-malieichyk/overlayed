@@ -7,22 +7,26 @@ import { ErrorView } from "./views/error";
 import { NavBar } from "./components/nav-bar";
 import { usePin } from "./hooks/use-pin";
 import { usePlacement } from "./hooks/use-placement";
-import { useStartPinned } from "./hooks/use-start-pinned";
 import { useHotkeys } from "./hooks/use-hotkeys";
 import { useAlign } from "./hooks/use-align";
 import { useDisableWebFeatures } from "./hooks/use-disable-context-menu";
-import { useUpdate } from "./hooks/use-update";
 import { useAppStore } from "./store";
 import { Toaster } from "./components/ui/toaster";
+import { useConfigValue } from "@/hooks/use-config-value";
 import { useEffect } from "react";
 import { useSocket } from "./rpc/manager";
 import { cn } from "./utils/tw";
 import Config from "./config";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 function App() {
   useDisableWebFeatures();
   useSocket();
+  const { value: language } = useConfigValue("language");
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     const styleForLog = "font-size: 20px; color: #00dffd";
@@ -30,19 +34,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const config = await Config.getConfig();
-      await invoke("set_hide_taskbar_when_pinned", {
-        hideTaskbarWhenPinned: config.hideTaskbarWhenPinned,
-      });
-    })();
+    if (getCurrentWebviewWindow().label !== "main") return;
+
+    Config.get("taskbarHideMode")
+      .then(mode => invoke("set_taskbar_hide_mode", { mode }))
+      .catch(error => console.error("Could not restore taskbar visibility preference", error));
   }, []);
 
-  const { update } = useUpdate();
   const { visible } = useAppStore();
 
   const { pin } = usePin();
-  useStartPinned();
   useHotkeys();
   const { horizontal, setHorizontalDirection } = useAlign();
   const visibleClass = visible ? "opacity-100" : "opacity-0";
@@ -63,7 +64,6 @@ function App() {
       {!displayOnly && (
         <>
           <NavBar
-            isUpdateAvailable={update?.available ?? false}
             pin={pin}
             anchored={anchored}
             alignDirection={horizontal}
@@ -74,11 +74,8 @@ function App() {
       )}
       <Routes>
         <Route path="/" element={<MainView />} />
-        <Route
-          path="/channel"
-          element={<ChannelView alignDirection={horizontal} anchored={anchored} displayOnly={displayOnly} />}
-        />
-        <Route path="/settings" element={<SettingsView update={update} />} />
+        <Route path="/channel" element={<ChannelView alignDirection={horizontal} anchored={anchored} pinned={pin} />} />
+        <Route path="/settings" element={<SettingsView />} />
         <Route path="/error" element={<ErrorView anchored={anchored} />} />
       </Routes>
     </div>

@@ -34,6 +34,7 @@ export interface AppState {
   pin: boolean;
   me: OverlayedUser | null;
   currentChannel: CurrentChannel | null;
+  channelSnapshotReady: boolean;
   users: Record<string, OverlayedUser>;
   discordErrors: Set<string>;
 }
@@ -48,6 +49,7 @@ export interface AppActions {
   removeUser: (id: string) => void;
   addUser: (user: VoiceStateUser) => void;
   setCurrentChannel: (channel: CurrentChannel | null) => void;
+  markChannelSnapshotReady: () => void;
   setMe: (user: OverlayedUser | null) => void;
   pushError: (message: string) => void;
   resetErrors: () => void;
@@ -97,6 +99,8 @@ export const useAppStore = create<AppState & AppActions>()(
     discordErrors: new Set(),
     pin: false,
     currentChannel: null,
+    channelSnapshotReady: false,
+    markChannelSnapshotReady: () => set({ channelSnapshotReady: true }),
     users: {},
     setAppVisible: value =>
       set(state => {

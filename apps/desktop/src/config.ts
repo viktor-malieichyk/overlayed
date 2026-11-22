@@ -1,14 +1,18 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BaseDirectory } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
+import type { PlacementMonitors } from "@/hooks/use-placement";
 import { listen } from "@tauri-apps/api/event";
 import * as Sentry from "@sentry/react";
 
 export type DirectionLR = "left" | "right" | "center";
 export type DirectionTB = "top" | "bottom";
 
-export type OpacityTarget = "all" | "username-box";
+export type TaskbarHideMode = "never" | "pinned" | "always";
 
-export type HotkeyCommand = "pin" | "toggle-visibility" | "next-monitor" | "open-settings";
+export type OpacityTarget = "all" | "username-box" | "entire-overlay";
+
+export type HotkeyCommand = "pin" | "toggle-visibility" | "next-monitor" | "open-settings" | "toggle-speaking-only";
 export interface HotkeyBinding {
   key: string;
   command: HotkeyCommand;
@@ -41,13 +45,14 @@ export interface OverlayedConfig {
   opacityTarget: OpacityTarget;
   maxUsernameLength: number;
   userScale: number;
-  hideTaskbarWhenPinned: boolean;
+  taskbarHideMode: TaskbarHideMode;
   placementMode: PlacementMode;
   placementMonitor: string | null;
   placementAnchor: PlacementAnchor;
-  placementOffsetX: number;
-  placementOffsetY: number;
-  startPinned: boolean;
+  placementMarginX: number;
+  placementMarginY: number;
+  hideRoomName: boolean;
+  language: "en" | "uk";
   hotkeys: HotkeyBinding[];
 }
 
@@ -55,24 +60,25 @@ export type OverlayedConfigKey = keyof OverlayedConfig;
 
 export const DEFAULT_OVERLAYED_CONFIG: OverlayedConfig = {
   pin: false,
-  horizontal: "right",
+  horizontal: "left",
   // TODO: vertical alignment? i.e., if aligned to bottom, then the navbar should be at the bottom (and corner radius changes appropriately)
   vertical: "bottom",
   telemetry: true,
-  joinHistoryNotifications: false,
+  joinHistoryNotifications: true,
   showOnlyTalkingUsers: false,
   showOwnUser: true,
   opacity: 100,
-  opacityTarget: "all",
+  opacityTarget: "entire-overlay",
   maxUsernameLength: 40,
   userScale: 100,
-  hideTaskbarWhenPinned: false,
+  taskbarHideMode: "never",
   placementMode: "anchored",
   placementMonitor: null,
   placementAnchor: "top-left",
-  placementOffsetX: 16,
-  placementOffsetY: 16,
-  startPinned: false,
+  placementMarginX: 1,
+  placementMarginY: 1.5,
+  hideRoomName: true,
+  language: "en",
   hotkeys: [
     { key: "CommandOrControl+Shift+H", command: "pin" },
     { key: "CommandOrControl+Shift+G", command: "toggle-visibility" },
@@ -83,89 +89,77 @@ const CONFIG_FILE_NAME = "config.json";
 
 export class Config {
   private config: OverlayedConfig = DEFAULT_OVERLAYED_CONFIG;
-  private loaded = false;
-  constructor() {
-    this.load();
+  private readonly loaded: Promise<void>;
+  private writes = Promise.resolve();
 
-    // keep this window's copy in sync with changes saved from other windows
+  constructor() {
+    this.loaded = this.readConfig(DEFAULT_OVERLAYED_CONFIG).then(value => {
+      this.config = value;
+      if (!value.telemetry) void Sentry.close();
+    });
+
     listen<OverlayedConfig>("config_update", event => {
       this.config = event.payload;
     });
   }
 
-  load = async () => {
-    if (this.loaded) return;
+  private async readConfig(fallback: OverlayedConfig): Promise<OverlayedConfig> {
     try {
-      const config = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig });
-      this.config = JSON.parse(config);
-
-      // get the new keys that don't exist in the config and merge them in
-      const newKeys = Object.keys(DEFAULT_OVERLAYED_CONFIG).filter(key => !Object.keys(this.config).includes(key));
-
-      this.config = {
-        ...DEFAULT_OVERLAYED_CONFIG,
-        ...this.config,
-        // NOTE: set new keys added to the default value
-        ...newKeys.reduce((acc, key) => {
-          // @ts-expect-error not sure why this errors but need to fix it
-          acc[key] = DEFAULT_OVERLAYED_CONFIG[key as OverlayedConfigKey];
-          return acc;
-        }, {} as OverlayedConfig),
-        // Preserve dragged windows when upgrading a pre-placement config.
-        ...(newKeys.includes("placementMode") ? { placementMode: "manual" } : {}),
-      };
-
-      // make sure to disable sentry if they have disabled telemetry
-      if (!this.config.telemetry) {
-        console.warn("[TELEMETRY] Disabling sentry.io telemetry because the user has disabled it");
-        Sentry.close();
-      } else {
-        console.log("[TELEMETRY] sentry.io telemetry is enabled!");
+      const raw = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig });
+      const saved: Partial<OverlayedConfig> & {
+        hideTaskbarWhenPinned?: boolean;
+        placementOffsetX?: number;
+        placementOffsetY?: number;
+      } = JSON.parse(raw);
+      const { hideTaskbarWhenPinned, placementOffsetX, placementOffsetY, ...config } = saved;
+      if (
+        (config.placementMarginX === undefined && placementOffsetX !== undefined) ||
+        (config.placementMarginY === undefined && placementOffsetY !== undefined)
+      ) {
+        const response = await invoke<PlacementMonitors>("get_monitors").catch(() => null);
+        const monitors = response?.monitors ?? [];
+        const monitor =
+          monitors.find(item => item.name === config.placementMonitor) ??
+          monitors.find(item => item.primary) ??
+          monitors[0];
+        const percent = (offset: number, resolution: number) =>
+          Math.max(0, Math.min(50, Math.round((offset * (monitor?.scaleFactor ?? 1) * 1000) / resolution) / 10));
+        if (config.placementMarginX === undefined && placementOffsetX !== undefined)
+          config.placementMarginX = percent(placementOffsetX, monitor?.width || 1920);
+        if (config.placementMarginY === undefined && placementOffsetY !== undefined)
+          config.placementMarginY = percent(placementOffsetY, monitor?.height || 1080);
       }
-
-      // fuck it persist it
-      this.save();
-    } catch (e: unknown) {
-      this.config = DEFAULT_OVERLAYED_CONFIG;
-      this.save();
-
-      // we don't need to raise an error cause it's the first time they have used overlayed probably?
+      return {
+        ...DEFAULT_OVERLAYED_CONFIG,
+        ...config,
+        // Preserve manually positioned overlays from before fixed placement was added.
+        placementMode: config.placementMode ?? "manual",
+        taskbarHideMode: config.taskbarHideMode ?? (hideTaskbarWhenPinned ? "pinned" : "never"),
+      };
+    } catch {
+      return fallback;
     }
-
-    this.loaded = true;
-  };
+  }
 
   async getConfig(): Promise<OverlayedConfig> {
-    await this.load();
+    await this.loaded;
     return this.config;
   }
 
-  async get<K extends keyof OverlayedConfig>(key: K): Promise<OverlayedConfig[K]> {
-    await this.load();
-
-    return this.config[key];
+  async get<K extends OverlayedConfigKey>(key: K): Promise<OverlayedConfig[K]> {
+    return (await this.getConfig())[key];
   }
 
-  async set<K extends keyof OverlayedConfig>(key: K, value: OverlayedConfig[K]): Promise<void> {
-    // Always re-load the on-disk config to avoid races where multiple
-    // concurrent callers might overwrite recent changes. This ensures we
-    // merge against the latest file contents before writing.
-    try {
-      const config = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig });
-      this.config = JSON.parse(config);
-    } catch (e: unknown) {
-      // ignore and fall back to current in-memory or defaults
-      this.config = { ...DEFAULT_OVERLAYED_CONFIG, ...this.config };
-    }
-
-    this.config[key] = value;
-    await this.save();
-  }
-
-  async save() {
-    await writeTextFile(CONFIG_FILE_NAME, JSON.stringify(this.config, null, 2), {
-      baseDir: BaseDirectory.AppConfig,
+  set<K extends OverlayedConfigKey>(key: K, value: OverlayedConfig[K]): Promise<void> {
+    const write = this.writes.then(async () => {
+      await this.loaded;
+      const current = await this.readConfig(this.config);
+      const updated = { ...current, [key]: value };
+      await writeTextFile(CONFIG_FILE_NAME, JSON.stringify(updated, null, 2), { baseDir: BaseDirectory.AppConfig });
+      this.config = updated;
     });
+    this.writes = write.catch(() => {});
+    return write;
   }
 }
 

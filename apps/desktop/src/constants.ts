@@ -1,3 +1,6 @@
+export const FORK_REPOSITORY = "https://github.com/viktor-malieichyk/overlayed";
+export const UPSTREAM_REPOSITORY = "https://github.com/overlayeddev/overlayed";
+
 export const Event = {
   UserLogUpdate: "user-log-update",
 } as const;

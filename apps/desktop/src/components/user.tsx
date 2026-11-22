@@ -4,21 +4,18 @@ import type { OverlayedUser } from "../types";
 import { HeadphonesOff } from "./icons/headphones-off";
 import { MicOff } from "./icons/mic-off";
 import { cn } from "@/utils/tw";
-import { useLayoutEffect, useRef, useState } from "react";
 
 export const User = ({
   item,
   alignDirection,
   opacity,
   opacityTarget,
-  userScale,
   anchored,
 }: {
   item: OverlayedUser;
   alignDirection: DirectionLR;
   opacity: number;
   opacityTarget: OpacityTarget;
-  userScale: number;
   anchored: boolean;
 }) => {
   const { id, selfMuted, selfDeafened, talking, muted, deafened, avatarHash } = item;
@@ -28,32 +25,6 @@ export const User = ({
   const talkingClass = talking ? "border-green-500" : "border-zinc-800";
   const mutedClass = selfMuted || muted ? "text-zinc-400" : "";
   const opacityStyle = talking ? "100%" : `${opacity}%`;
-  const scaleFactor = (userScale ?? 100) / 100;
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const row = rowRef.current;
-    if (!anchored || !row) return;
-    const measure = () => {
-      const width = row.offsetWidth;
-      const height = row.offsetHeight;
-      setNaturalSize(previous =>
-        previous?.width === width && previous.height === height ? previous : { width, height }
-      );
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(row);
-    measure();
-    return () => observer.disconnect();
-  }, [anchored]);
-  let transformOrigin = "center center";
-  if (alignDirection === "left") {
-    transformOrigin = "left center";
-  } else if (alignDirection === "right") {
-    transformOrigin = "right center";
-  }
-
   const { value: maxUsernameLength } = useConfigValue("maxUsernameLength");
 
   const displayName = (() => {
@@ -96,9 +67,8 @@ export const User = ({
     );
   }
 
-  const row = (
+  return (
     <div
-      ref={rowRef}
       data-placement-row={anchored ? "" : undefined}
       className={cn(
         "flex gap-2 py-1 p-2 justify-start items-center transition-opacity",
@@ -108,9 +78,6 @@ export const User = ({
       )}
       style={{
         ...(opacityTarget === "all" ? { opacity: opacityStyle } : {}),
-        transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : undefined,
-        transformOrigin: scaleFactor !== 1 ? (anchored ? "top left" : transformOrigin) : undefined,
-        willChange: scaleFactor !== 1 ? "transform" : undefined,
       }}
     >
       <div className={`pointer-events-none relative rounded-full border-2 ${talkingClass}`}>
@@ -147,18 +114,6 @@ export const User = ({
           {(selfDeafened || deafened) && <HeadphonesOff className={deafened ? "fill-red-600" : "fill-current"} />}
         </div>
       </div>
-    </div>
-  );
-
-  if (!anchored) return row;
-  return (
-    <div
-      className="shrink-0 overflow-hidden"
-      style={
-        naturalSize ? { width: naturalSize.width * scaleFactor, height: naturalSize.height * scaleFactor } : undefined
-      }
-    >
-      {row}
     </div>
   );
 };

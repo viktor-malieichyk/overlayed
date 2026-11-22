@@ -16,7 +16,6 @@ import { Event } from "@/constants";
 import type { CurrentChannel, VoiceStateUser, VoiceUser } from "@/types";
 import { getVersion } from "@tauri-apps/api/app";
 import { hash } from "@/utils/crypto";
-import { invoke } from "@tauri-apps/api/core";
 
 interface TokenResponse {
   access_token: string;
@@ -182,7 +181,6 @@ class SocketManager {
       this.connectionLost("Connection attempt failed", generation);
       if (initial) {
         this.navigate("/error");
-        await this.unpin().catch(error => console.warn("Could not unpin after initial RPC failure", error));
       }
     }
   }
@@ -373,14 +371,6 @@ class SocketManager {
     });
   }
 
-  // TODO: this could live as a generic util and not on this class if we ever need it elsewhere
-  private async unpin() {
-    // unpin the overlay if there is an error
-    return invoke("set_pin", {
-      value: false,
-    });
-  }
-
   /**
    * Message listener when we get message from discord
    * @param payload a JSON object of the parsed message
@@ -410,6 +400,7 @@ class SocketManager {
       this.missedResyncs = 0;
       try {
         this.reconcileChannel(payload.data ?? null);
+        this.store.markChannelSnapshotReady();
       } catch {
         this.connectionLost("Invalid selected-channel reply", generation);
         return;
@@ -544,6 +535,7 @@ class SocketManager {
         // set the current channel
         this.store.setCurrentChannel(payload.data);
       }
+      if (payload.evt !== RPCEvent.ERROR) this.store.markChannelSnapshotReady();
     }
 
     // console.log(payload);

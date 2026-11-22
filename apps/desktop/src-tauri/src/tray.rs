@@ -1,9 +1,12 @@
-use std::sync::Mutex;
+use std::sync::{
+  atomic::{AtomicBool, Ordering},
+  Mutex,
+};
 
 use tauri::{
-  menu::{Menu, MenuBuilder, MenuEvent},
+  menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuEvent},
   tray::TrayIconBuilder,
-  AppHandle, Emitter, LogicalSize, Manager, Wry,
+  AppHandle, Emitter, Manager, State, Wry,
 };
 
 use anyhow::Result;
@@ -11,25 +14,111 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 use crate::{
   commands, hotkeys, TrayMenu, MAIN_WINDOW_NAME, OVERLAYED, SETTINGS_WINDOW_NAME,
-  TRAY_OPEN_DEVTOOLS_MAIN, TRAY_OPEN_DEVTOOLS_SETTINGS, TRAY_QUIT, TRAY_RELOAD, TRAY_SETTINGS,
-  TRAY_SHOW_APP, TRAY_TOGGLE_PIN,
+  TRAY_JOIN_HISTORY, TRAY_QUIT, TRAY_RELOAD, TRAY_SETTINGS, TRAY_SHOW_APP, TRAY_SPEAKING_ONLY,
+  TRAY_TOGGLE_PIN,
 };
+
+#[tauri::command]
+pub fn set_speaking_only_checked(menu: State<TrayMenu>, checked: bool) -> Result<(), String> {
+  let item = menu
+    .lock()
+    .map_err(|error| error.to_string())?
+    .get(TRAY_SPEAKING_ONLY);
+  if let Some(item) = item.and_then(|item| item.as_check_menuitem().cloned()) {
+    item
+      .set_checked(checked)
+      .map_err(|error| error.to_string())?;
+  }
+  Ok(())
+}
+
+#[derive(Default)]
+pub struct TrayLanguage(AtomicBool);
+
+impl TrayLanguage {
+  pub fn ukrainian(&self) -> bool {
+    self.0.load(Ordering::Relaxed)
+  }
+}
+
+pub fn pin_label(pinned: bool, ukrainian: bool) -> &'static str {
+  match (pinned, ukrainian) {
+    (true, true) => "Відкріпити",
+    (false, true) => "Закріпити",
+    (true, false) => "Unpin",
+    (false, false) => "Pin",
+  }
+}
+
+#[tauri::command]
+pub fn set_tray_language(app: AppHandle, language: &str) -> Result<(), String> {
+  let ukrainian = language == "uk";
+  app
+    .state::<TrayLanguage>()
+    .0
+    .store(ukrainian, Ordering::Relaxed);
+  let pinned = commands::get_pin(app.state::<crate::Pinned>());
+  let menu = app.state::<TrayMenu>();
+  let menu = menu.lock().map_err(|error| error.to_string())?.clone();
+
+  for (id, english, translated) in [
+    (TRAY_SHOW_APP, "Show Overlayed", "Показати Overlayed"),
+    (TRAY_RELOAD, "Reload App", "Перезавантажити застосунок"),
+    (TRAY_SETTINGS, "Settings", "Налаштування"),
+    (TRAY_JOIN_HISTORY, "Join History", "Історія входів"),
+    (TRAY_QUIT, "Quit", "Закрити"),
+  ] {
+    if let Some(item) = menu.get(id) {
+      item
+        .as_menuitem_unchecked()
+        .set_text(if ukrainian { translated } else { english })
+        .map_err(|error| error.to_string())?;
+    }
+  }
+  if let Some(item) = menu.get(TRAY_TOGGLE_PIN) {
+    item
+      .as_menuitem_unchecked()
+      .set_text(pin_label(pinned, ukrainian))
+      .map_err(|error| error.to_string())?;
+  }
+  if let Some(item) = menu.get(TRAY_SPEAKING_ONLY) {
+    if let Some(item) = item.as_check_menuitem() {
+      item
+        .set_text(if ukrainian {
+          "Показувати лише тих хто говорить"
+        } else {
+          "Only show speakers"
+        })
+        .map_err(|error| error.to_string())?;
+    }
+  }
+  if let Some(settings) = app.get_webview_window(SETTINGS_WINDOW_NAME) {
+    settings
+      .set_title(if ukrainian {
+        "Overlayed - Налаштування"
+      } else {
+        "Overlayed - Settings"
+      })
+      .map_err(|error| error.to_string())?;
+  }
+  Ok(())
+}
 
 pub struct Tray;
 
 impl Tray {
   pub fn create_tray_menu(app_handle: &AppHandle) -> Result<Menu<Wry>, tauri::Error> {
     let version = app_handle.package_info().version.to_string();
+    let speaking_only = CheckMenuItemBuilder::with_id(TRAY_SPEAKING_ONLY, "Only show speakers")
+      .checked(false)
+      .build(app_handle)?;
     MenuBuilder::new(app_handle)
       .text(TRAY_TOGGLE_PIN, "Pin")
       .text(TRAY_SHOW_APP, "Show Overlayed")
+      .item(&speaking_only)
       .text(TRAY_RELOAD, "Reload App")
-      .text(TRAY_OPEN_DEVTOOLS_MAIN, "Open Devtools (main window)")
-      .text(
-        TRAY_OPEN_DEVTOOLS_SETTINGS,
-        "Open Devtools (settings window)",
-      )
       .text(TRAY_SETTINGS, "Settings")
+      .text(TRAY_JOIN_HISTORY, "Join History")
       .separator()
       .text(OVERLAYED, format!("Overlayed v{version}"))
       .text(TRAY_QUIT, "Quit")
@@ -54,6 +143,9 @@ impl Tray {
           log::warn!("Could not toggle overlay pin from tray: {error}");
         }
       }
+      TRAY_SPEAKING_ONLY => {
+        hotkeys::run_action(app, hotkeys::HotkeyCommand::ToggleSpeakingOnly);
+      }
       TRAY_SHOW_APP => {
         if app.state::<hotkeys::OverlayVisibility>().is_hidden() {
           if let Err(error) = app.emit_to(MAIN_WINDOW_NAME, hotkeys::SHOW_OVERLAY, ()) {
@@ -69,33 +161,29 @@ impl Tray {
           if let Err(error) = crate::placement::reapply(&window, &placement) {
             log::warn!("Could not reapply overlay placement: {error}");
           }
-        } else {
-          // center and resize the window
-          window.center();
-          window.set_size(LogicalSize::new(400, 700)).unwrap();
         }
 
         window.set_focus().unwrap();
       }
       TRAY_RELOAD => {
-        let window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
-        window.eval("window.location.reload();").unwrap();
+        if let Some(window) = app.get_webview_window(MAIN_WINDOW_NAME) {
+          if let Err(error) = window.eval("window.location.reload();") {
+            log::warn!("Could not reload the overlay: {error}");
+          }
+        }
       }
-      TRAY_SETTINGS => {
-        // find the settings window and show it
-        let settings_window = app.get_webview_window(SETTINGS_WINDOW_NAME).unwrap();
-        settings_window.show().unwrap();
-        settings_window.set_focus().unwrap();
-      }
-      TRAY_OPEN_DEVTOOLS_MAIN => {
-        let window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
-        window.open_devtools();
-        window.show().unwrap();
-      }
-      TRAY_OPEN_DEVTOOLS_SETTINGS => {
-        let window = app.get_webview_window(SETTINGS_WINDOW_NAME).unwrap();
-        window.open_devtools();
-        window.show().unwrap();
+      TRAY_SETTINGS | TRAY_JOIN_HISTORY => {
+        if let Some(settings_window) = app.get_webview_window(SETTINGS_WINDOW_NAME) {
+          if event.id().as_ref() == TRAY_JOIN_HISTORY {
+            if let Err(error) =
+              settings_window.eval("window.location.hash = 'settings?tab=join-history';")
+            {
+              log::warn!("Could not select Join History: {error}");
+            }
+          }
+          settings_window.show().unwrap();
+          settings_window.set_focus().unwrap();
+        }
       }
       TRAY_QUIT => {
         // NOTE: we only save position and size so that StateFlags::FULLSCREEN is not saved, as

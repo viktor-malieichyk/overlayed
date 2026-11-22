@@ -1,4 +1,5 @@
-import Config, { type OverlayedConfig, type PlacementAnchor } from "@/config";
+import { useAppStore } from "@/store";
+import Config, { DEFAULT_OVERLAYED_CONFIG, type OverlayedConfig, type PlacementAnchor } from "@/config";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -19,7 +20,7 @@ export interface PlacementMonitors {
   positioningSupported: boolean;
 }
 
-export type PlacementPreview = Partial<Pick<OverlayedConfig, "placementOffsetX" | "placementOffsetY">>;
+export type PlacementPreview = Partial<Pick<OverlayedConfig, "placementMarginX" | "placementMarginY">>;
 
 interface PlacementParameters {
   monitor: string | null;
@@ -44,14 +45,23 @@ const EMPTY_CONTENT_SIZE = { width: 64, height: 52 };
 const FIT_HEADROOM = 1;
 
 export const usePlacement = (pin: boolean, pathname: string) => {
+  const channelSnapshotReady = useAppStore(state => state.channelSnapshotReady);
   const rootRef = useRef<HTMLDivElement>(null);
   const [config, setConfig] = useState<OverlayedConfig | null>(null);
   const [supported, setSupported] = useState<boolean | null>(null);
   // A failed config stays manual until its placement values change.
   const [failedConfig, setFailedConfig] = useState<string | null>(null);
-  const parameters = useRef<PlacementParameters>({ monitor: null, anchor: "top-left", offsetX: 16, offsetY: 16 });
+  const parameters = useRef<PlacementParameters>({
+    monitor: null,
+    anchor: "top-left",
+    offsetX: DEFAULT_OVERLAYED_CONFIG.placementMarginX,
+    offsetY: DEFAULT_OVERLAYED_CONFIG.placementMarginY,
+  });
   const previewOffsets = useRef<PlacementPreview>({});
-  const savedOffsets = useRef({ placementOffsetX: 16, placementOffsetY: 16 });
+  const savedOffsets = useRef({
+    placementMarginX: DEFAULT_OVERLAYED_CONFIG.placementMarginX,
+    placementMarginY: DEFAULT_OVERLAYED_CONFIG.placementMarginY,
+  });
   const configSeen = useRef(false);
   // One apply runs while pending holds only the latest request or a release.
   const pending = useRef<PlacementRequest | "release" | null>(null);
@@ -76,8 +86,8 @@ export const usePlacement = (pin: boolean, pathname: string) => {
       value.placementMode,
       value.placementMonitor,
       value.placementAnchor,
-      value.placementOffsetX,
-      value.placementOffsetY,
+      value.placementMarginX,
+      value.placementMarginY,
     ]);
 
   useEffect(() => {
@@ -89,16 +99,16 @@ export const usePlacement = (pin: boolean, pathname: string) => {
       if (previousMode.current === "anchored" && value.placementMode === "manual") pendingUnlock.current = true;
       if (value.placementMode === "anchored") pendingUnlock.current = false;
       previousMode.current = value.placementMode;
-      savedOffsets.current = { placementOffsetX: value.placementOffsetX, placementOffsetY: value.placementOffsetY };
+      savedOffsets.current = { placementMarginX: value.placementMarginX, placementMarginY: value.placementMarginY };
       if (value.placementMode === "manual") previewOffsets.current = {};
       const preview = previewOffsets.current;
-      if (preview.placementOffsetX === value.placementOffsetX) delete preview.placementOffsetX;
-      if (preview.placementOffsetY === value.placementOffsetY) delete preview.placementOffsetY;
+      if (preview.placementMarginX === value.placementMarginX) delete preview.placementMarginX;
+      if (preview.placementMarginY === value.placementMarginY) delete preview.placementMarginY;
       parameters.current = {
         monitor: value.placementMonitor,
         anchor: value.placementAnchor,
-        offsetX: preview.placementOffsetX ?? value.placementOffsetX,
-        offsetY: preview.placementOffsetY ?? value.placementOffsetY,
+        offsetX: preview.placementMarginX ?? value.placementMarginX,
+        offsetY: preview.placementMarginY ?? value.placementMarginY,
       };
       currentConfigKey.current = configKeyFor(value);
       if (value.placementMode === "manual") {
@@ -115,26 +125,26 @@ export const usePlacement = (pin: boolean, pathname: string) => {
     });
     const unlistenPreview = listen<PlacementPreview>("placement_preview", event => {
       if (disposed || !allowed.current) return;
-      const { placementOffsetX, placementOffsetY } = event.payload;
+      const { placementMarginX, placementMarginY } = event.payload;
       if (
-        Number.isFinite(placementOffsetX) &&
-        placementOffsetX !== undefined &&
-        placementOffsetX >= 0 &&
-        placementOffsetX <= 200
+        Number.isFinite(placementMarginX) &&
+        placementMarginX !== undefined &&
+        placementMarginX >= 0 &&
+        placementMarginX <= 50
       ) {
-        if (placementOffsetX === savedOffsets.current.placementOffsetX) delete previewOffsets.current.placementOffsetX;
-        else previewOffsets.current.placementOffsetX = placementOffsetX;
-        parameters.current.offsetX = placementOffsetX;
+        if (placementMarginX === savedOffsets.current.placementMarginX) delete previewOffsets.current.placementMarginX;
+        else previewOffsets.current.placementMarginX = placementMarginX;
+        parameters.current.offsetX = placementMarginX;
       }
       if (
-        Number.isFinite(placementOffsetY) &&
-        placementOffsetY !== undefined &&
-        placementOffsetY >= 0 &&
-        placementOffsetY <= 200
+        Number.isFinite(placementMarginY) &&
+        placementMarginY !== undefined &&
+        placementMarginY >= 0 &&
+        placementMarginY <= 50
       ) {
-        if (placementOffsetY === savedOffsets.current.placementOffsetY) delete previewOffsets.current.placementOffsetY;
-        else previewOffsets.current.placementOffsetY = placementOffsetY;
-        parameters.current.offsetY = placementOffsetY;
+        if (placementMarginY === savedOffsets.current.placementMarginY) delete previewOffsets.current.placementMarginY;
+        else previewOffsets.current.placementMarginY = placementMarginY;
+        parameters.current.offsetY = placementMarginY;
       }
       scheduleRef.current?.();
     });
@@ -284,7 +294,8 @@ export const usePlacement = (pin: boolean, pathname: string) => {
 
     const measure = () => {
       frame = 0;
-      if (!root || !allowed.current) return;
+      // Keep the native window bounds while a reloaded channel waits for its first snapshot.
+      if (!root || !allowed.current || (pathname === "/channel" && !channelSnapshotReady)) return;
       let { width, height } = DEFAULT_WINDOW_SIZE;
       if (pathname === "/channel") {
         const content = root.querySelector<HTMLElement>("[data-placement-content]");
@@ -344,7 +355,7 @@ export const usePlacement = (pin: boolean, pathname: string) => {
       resize.disconnect();
       mutations.disconnect();
     };
-  }, [anchored, mode, supported, pathname, pin]);
+  }, [anchored, mode, supported, pathname, pin, channelSnapshotReady]);
 
   return { anchored, channelPlacement, displayOnly, rootRef };
 };

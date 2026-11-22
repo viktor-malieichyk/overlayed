@@ -1,51 +1,77 @@
+import { useTranslation } from "@/i18n";
+import Config from "@/config";
+import { useConfigValue } from "@/hooks/use-config-value";
+import { emit } from "@tauri-apps/api/event";
 import { Updater } from "@/components/updater";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Account } from "./account";
 import { JoinHistory } from "./join-history";
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { usePlatformInfo } from "@/hooks/use-platform-info";
-import { SiX, SiTwitch, SiDiscord, type IconType } from "@icons-pack/react-simple-icons";
-import type { Update } from "@tauri-apps/plugin-updater";
+import { FORK_REPOSITORY, UPSTREAM_REPOSITORY } from "@/constants";
+import { useUpdate } from "@/hooks/use-update";
 import { Configuration } from "./configuration";
 import { Placement } from "./placement";
 import { Hotkeys } from "./hotkeys";
 
-function Link({ icon: Icon, url }: { icon: IconType; url: string }) {
+export const SettingsView = () => {
+  const t = useTranslation();
+  const { value: language } = useConfigValue("language");
+  const { canary, os, arch } = usePlatformInfo();
+  const update = useUpdate(!canary && os === "windows" && arch === "x86_64");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const currentTab =
+    requestedTab && ["account", "configuration", "placement", "hotkeys", "join-history"].includes(requestedTab)
+      ? requestedTab
+      : "account";
   return (
-    <a className="text-gray-400 hover:text-gray-300" target="_blank" rel="noreferrer" href={url}>
-      <Icon />
-    </a>
-  );
-}
-
-export const SettingsView = ({ update }: { update: Update | null }) => {
-  const { canary } = usePlatformInfo();
-  const [currentTab, setCurrentTab] = useState("account");
-  return (
-    <div className="bg-zinc-900 w-[calc(100vw)] h-full">
+    <div className="min-h-0 w-full flex-1 bg-zinc-900">
       <Tabs
-        defaultValue="account"
-        onValueChange={value => {
-          setCurrentTab(value);
-        }}
+        className="flex h-full min-h-0 flex-col"
+        value={currentTab}
+        onValueChange={tab => setSearchParams({ tab }, { replace: true })}
       >
-        <TabsList className="grid w-full grid-cols-5 rounded-t-none [&>button]:text-xs">
-          <TabsTrigger value="account">General</TabsTrigger>
-          <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="placement">Position</TabsTrigger>
-          <TabsTrigger value="hotkeys">Hotkeys</TabsTrigger>
-          <TabsTrigger value="join-history">Join History</TabsTrigger>
+        <TabsList className="grid w-full shrink-0 grid-cols-5 rounded-t-none [&>button]:whitespace-normal [&>button]:text-xs [&>button]:leading-tight">
+          <TabsTrigger value="account">{t("General")}</TabsTrigger>
+          <TabsTrigger value="configuration">{t("Configuration")}</TabsTrigger>
+          <TabsTrigger value="placement">{t("Position")}</TabsTrigger>
+          <TabsTrigger value="hotkeys">{t("Hotkeys")}</TabsTrigger>
+          <TabsTrigger value="join-history">{t("Join History")}</TabsTrigger>
         </TabsList>
         {canary && (
-          <div className="h-[32px] bg-yellow-400 font-semibold text-black flex items-center justify-center">
+          <div className="h-[32px] shrink-0 bg-yellow-400 font-semibold text-black flex items-center justify-center">
             <a target="_blank" href="https://overlayed.dev/canary#about">
-              <p>The canary build may be unstable (click to learn more)</p>
+              <p>{t("The canary build may be unstable (click to learn more)")}</p>
             </a>
           </div>
         )}
-        {!canary && update?.available && <Updater update={update} />}
-        <div className="p-4 pt-0">
+        {update && (
+          <div hidden={currentTab !== "account"} className="px-4 pt-3">
+            <Updater update={update} />
+          </div>
+        )}
+        <div className="min-h-0 flex-1 p-4 pt-0">
           <TabsContent tabIndex={-1} value="account">
+            <div className="mb-3 flex items-center justify-between">
+              <label htmlFor="language">{t("Language")}</label>
+              <select
+                id="language"
+                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1"
+                value={language}
+                onChange={async event => {
+                  await Config.set("language", event.target.value === "uk" ? "uk" : "en");
+                  await emit("config_update", await Config.getConfig());
+                }}
+              >
+                <option value="en" lang="en">
+                  English
+                </option>
+                <option value="uk" lang="uk">
+                  Українська
+                </option>
+              </select>
+            </div>
             <Account />
           </TabsContent>
           <TabsContent tabIndex={-1} value="configuration">
@@ -63,23 +89,13 @@ export const SettingsView = ({ update }: { update: Update | null }) => {
             </div>
           </TabsContent>
         </div>
-        <div className="absolute bottom-0 flex items-center w-full h-10 pl-4 text-gray-400 bg-zinc-800">
-          <p>
-            Found a bug? Please report them on the{" "}
-            <a
-              className="text-blue-400"
-              target="_blank"
-              rel="noreferrer"
-              href="https://github.com/overlayeddev/overlayed"
-            >
-              github repo
-            </a>
-          </p>
-          <div className="flex grow pr-4 justify-end gap-3 ">
-            <Link icon={SiX} url="https://x.com/OverlayedDev" />
-            <Link icon={SiTwitch} url="https://twitch.tv/OverlayedDev" />
-            <Link icon={SiDiscord} url="https://discord.gg/eXmeNkVjye" />
-          </div>
+        <div className="flex min-h-10 w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-800 px-4 py-2 text-xs">
+          <a className="text-blue-400" target="_blank" rel="noreferrer" href={FORK_REPOSITORY}>
+            {t("This fork on GitHub")}
+          </a>
+          <a className="text-blue-400" target="_blank" rel="noreferrer" href={UPSTREAM_REPOSITORY}>
+            {t("Original Overlayed project on GitHub")}
+          </a>
         </div>
       </Tabs>
     </div>

@@ -7,7 +7,7 @@
     "devUrl": "http://localhost:1420"
   },
   "bundle": {
-    "createUpdaterArtifacts": "v1Compatible",
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
     "icon": [
@@ -19,17 +19,20 @@
     ],
     "windows": {
       "webviewInstallMode": {
-        "type": "offlineInstaller"
+        "type": "embedBootstrapper"
       }
     }
   },
   "productName": "Overlayed",
-  "version": "0.6.2",
+  "version": "0.7.0-beta",
   "identifier": "com.overlayed.dev",
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5MDVDNEVFQTc2QzJBNDYKUldSR0tteW43c1FGeVhzUm9vNEJKUkFyUXhSS2lrZWRuV1p1VWx5Tkg5bUhEWDZrOGprbGNnWkQK",
-      "endpoints": ["https://update.overlayed.dev/{{target}}/{{arch}}/{{current_version}}"]
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQUJGNzNEMDYzNEZCMzYKUldRMit6UUdQZmVyN0lGZ3dXWStmNFFrYStEckZqM1ZDWUtmZ1huZXA5TzFGa1gzMTZuM2xrSHEK",
+      "endpoints": [
+        "https://github.com/viktor-malieichyk/overlayed/releases/latest/download/latest.json",
+        "https://github.com/viktor-malieichyk/overlayed/releases/download/v0.7.0-beta/latest.json"
+      ]
     }
   },
   "app": {
@@ -56,8 +59,8 @@
         "label": "settings",
         "url": "#settings",
         "title": "Overlayed - Settings",
-        "width": 600,
-        "height": 480
+        "width": 680,
+        "height": 640
       }
     ],
     "withGlobalTauri": true,

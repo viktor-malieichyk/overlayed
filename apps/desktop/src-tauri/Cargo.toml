@@ -1,10 +1,10 @@
 [package]
 name = "overlayed"
-version = "0.0.0"
+version = "0.7.0-beta"
 description = "Voice chat overlay for Discord"
 authors = ["Team Overlayed"]
 license = "AGPL-3.0"
-repository = "https://github.com/overlayeddev/overlayed"
+repository = "https://github.com/viktor-malieichyk/overlayed"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

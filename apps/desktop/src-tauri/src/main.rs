@@ -39,7 +39,14 @@ use tauri::WebviewWindow;
 
 pub struct Pinned(AtomicBool);
 
-pub struct HideTaskbarWhenPinned(AtomicBool);
+#[derive(Clone, Copy, Default, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TaskbarHideMode {
+  #[default]
+  Never,
+  Pinned,
+  Always,
+}
 
 pub struct TrayMenu(Mutex<Menu<Wry>>);
 
@@ -128,12 +135,18 @@ fn main() {
 
   app = app
     .manage(Pinned(AtomicBool::new(false)))
-    .manage(HideTaskbarWhenPinned(AtomicBool::new(false)))
+    .manage(tray::TrayLanguage::default())
+    .manage(Mutex::new(TaskbarHideMode::default()))
     .manage(placement::PlacementState::default())
     .manage(hotkeys::HotkeysState::default())
     .manage(hotkeys::OverlayVisibility::default())
     .setup(move |app| {
       debug!("starting app...");
+      let config_dir = app.path().app_config_dir()?;
+      if let Err(error) = std::fs::create_dir_all(&config_dir) {
+        log::warn!("Could not create the settings directory: {error}");
+      }
+
       let window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
       let settings = app.get_webview_window(SETTINGS_WINDOW_NAME).unwrap();
 
@@ -166,7 +179,10 @@ fn main() {
       }
 
       // update the system tray
-      Tray::update_tray(app.app_handle());
+      Tray::update_tray(app.app_handle())?;
+      if let Err(error) = hotkeys::set_pin(app.app_handle().clone(), true) {
+        log::warn!("Could not start the overlay pinned: {error}");
+      }
 
       // NOTE: always force settings window to be a certain size
       settings.set_size(LogicalSize {
@@ -185,7 +201,9 @@ fn main() {
       simulate_error_screen,
       close_settings,
       open_settings,
-      set_hide_taskbar_when_pinned,
+      set_taskbar_hide_mode,
+      tray::set_speaking_only_checked,
+      tray::set_tray_language,
       open_config_dir,
       placement::get_monitors,
       placement::apply_placement,

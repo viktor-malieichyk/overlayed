@@ -1,17 +1,10 @@
+import { useTranslation } from "@/i18n";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Settings,
-  Pin,
-  Download,
-  ArrowLeftToLine,
-  ArrowRightToLine,
-  ChevronsRightLeft,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Settings, Pin, ArrowLeftToLine, ArrowRightToLine, ChevronsRightLeft, X, type LucideIcon } from "lucide-react";
 import { usePlatformInfo } from "@/hooks/use-platform-info";
 import React, { useEffect } from "react";
 import Config, { type DirectionLR } from "../config";
+import { useConfigValue } from "@/hooks/use-config-value";
 import { useAppStore } from "../store";
 import { useState } from "react";
 import { FTUE_PIN_TRAY_TIP_KEY } from "@/constants";
@@ -56,19 +49,19 @@ export const NavBar = ({
   anchored,
   alignDirection,
   setAlignDirection,
-  isUpdateAvailable,
 }: {
   pin: boolean;
   anchored: boolean;
   alignDirection: DirectionLR;
   setAlignDirection: React.Dispatch<React.SetStateAction<DirectionLR>>;
-  isUpdateAvailable: boolean;
 }) => {
+  const t = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { currentChannel, me } = useAppStore();
 
-  const [channelName, setChannelName] = useState<string>();
+  const { value: hideRoomName } = useConfigValue("hideRoomName");
+  const channelName = hideRoomName ? undefined : getChannelName(currentChannel);
   const [currentAlignment, setCurrentAlignment] = useState(mapping[alignDirection]);
 
   // keep local currentAlignment in sync when the prop changes (e.g., loaded from config)
@@ -78,7 +71,6 @@ export const NavBar = ({
 
   const opacity = pin && location.pathname === "/channel" ? "opacity-0" : "opacity-100";
   const IconComponent = horizontalAlignments[currentAlignment]?.icon || ArrowLeftToLine;
-  const showUpdateButton = location.pathname !== "/settings" && isUpdateAvailable;
 
   const routesToShowOn = ["/channel", "/error", "/"];
   const { canary, os } = usePlatformInfo();
@@ -103,43 +95,7 @@ export const NavBar = ({
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  useEffect(() => {
-    setChannelName(getChannelName(currentChannel));
-  }, [location.pathname, currentChannel]);
-
-  function getTrayHint(os: string): React.ReactNode {
-    if (os === "windows") {
-      return (
-        <>
-          Pinning hides this frame to only show the users in the call.
-          <br />
-          <br />
-          Unpin or access Settings anytime via the <strong className="text-white">system tray</strong> icon in the near
-          the clock in your taskbar.
-        </>
-      );
-    }
-    if (os === "macos") {
-      return (
-        <>
-          Pinning hides this frame to only show the users in the call.
-          <br />
-          <br />
-          Unpin or access Settings anytime via the <strong className="text-white">menu bar</strong> icon in the
-          top-right of your screen.
-        </>
-      );
-    }
-    return (
-      <>
-        Pinning hides this frame to only show the users in the call.
-        <br />
-        <br />
-        Unpin or access Settings anytime via the <strong className="text-white">system tray</strong> /{" "}
-        <strong className="text-white">notification area</strong> icon.
-      </>
-    );
-  }
+  const trayHint = os === "macos" ? t("menu bar") : t("system tray");
 
   return (
     <div
@@ -170,22 +126,9 @@ export const NavBar = ({
         </div>
         {location.pathname !== "/settings" && (
           <div className={cn("hidden gap-4 md:flex", anchored && "shrink-0")}>
-            {!canary && showUpdateButton && (
-              <button className="cursor-pointer">
-                <Download
-                  className="text-green-500"
-                  size={20}
-                  onClick={() => {
-                    invoke("open_settings", {
-                      update: true,
-                    });
-                  }}
-                />
-              </button>
-            )}
             <button
               className="cursor-pointer"
-              title={horizontalAlignments[currentAlignment]?.name + "-aligned. Click to toggle."}
+              title={`${t("Alignment")}: ${t(horizontalAlignments[currentAlignment]?.name ?? "Left")}`}
             >
               <IconComponent
                 size={20}
@@ -200,7 +143,7 @@ export const NavBar = ({
               />
             </button>
             <div className="relative flex items-center">
-              <button className="cursor-pointer" title="Enable pin">
+              <button className="cursor-pointer" title={t("Enable pin")}>
                 <Pin
                   size={20}
                   onClick={async () => {
@@ -217,11 +160,14 @@ export const NavBar = ({
                   {/* Arrow pointing up toward the pin button */}
                   <div className="absolute -top-3 right-0 h-0 w-0 border-x-[9px] border-b-[12px] border-x-transparent border-b-zinc-500" />
                   <div className="flex items-start gap-2">
-                    <p className="flex-1 leading-snug text-zinc-300">{getTrayHint(os)}</p>
+                    <p className="flex-1 leading-snug text-zinc-300">
+                      {t("Pinning hides this frame to only show the users in the call.")}{" "}
+                      {t("Unpin or access Settings anytime via the")} {trayHint}.
+                    </p>
                     <button
                       onClick={dismissFtue}
                       className="absolute right-2 top-2 shrink-0 cursor-pointer text-zinc-400 hover:text-white"
-                      title="Dismiss"
+                      title={t("Dismiss")}
                     >
                       <X size={16} />
                     </button>
@@ -231,9 +177,9 @@ export const NavBar = ({
             </div>
             <button
               className="cursor-pointer"
-              title="Settings"
+              title={t("Settings")}
               onClick={() => {
-                invoke("open_settings", { update: false });
+                invoke("open_settings");
               }}
             >
               <Settings size={20} />

@@ -57,3 +57,16 @@ pnpm build:desktop:unsigned
 ```
 pnpm build:canary
 ```
+
+### Windows x64 releases for this fork
+
+Use the same updater signing key for every release. Keep the private key and its password outside the repository, and set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the build environment.
+
+After bumping the Tauri and Rust package versions, build the signed NSIS installer and generate its update manifest from the repository root.
+
+```sh
+pnpm --filter desktop exec tauri build --target x86_64-pc-windows-msvc --bundles nsis
+node scripts/create-fork-update-manifest.mjs <path-to-x64-setup.exe>
+```
+
+Attach the installer and the generated `latest.json` to the matching GitHub release, tagged `v<version>`. The manifest contains the installer signature and must be published with each release that is marked latest.

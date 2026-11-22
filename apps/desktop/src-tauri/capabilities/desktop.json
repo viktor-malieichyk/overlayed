@@ -34,6 +34,7 @@
     "core:tray:default",
     "core:app:default",
     "core:event:default",
+    "core:resources:allow-close",
     "shell:default",
     "websocket:default",
     "window-state:default",

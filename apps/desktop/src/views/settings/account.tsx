@@ -1,6 +1,9 @@
+import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { FTUE_PIN_TRAY_TIP_KEY } from "@/constants";
+import { FORK_REPOSITORY, FTUE_PIN_TRAY_TIP_KEY, UPSTREAM_REPOSITORY } from "@/constants";
 import { exit } from "@tauri-apps/plugin-process";
+import { uk } from "date-fns/locale";
+import { useConfigValue } from "@/hooks/use-config-value";
 import * as dateFns from "date-fns";
 import { saveWindowState, StateFlags } from "@tauri-apps/plugin-window-state";
 
@@ -24,6 +27,7 @@ import { Pin } from "lucide-react";
 import type { VoiceUser } from "@/types";
 
 export const Developer = () => {
+  const t = useTranslation();
   const DEV_TOKEN_BACKUP_KEY = "overlayed:dev:token-backup";
   const DEV_TOKEN_EXPIRY_BACKUP_KEY = "overlayed:dev:token-expiry-backup";
   const DEV_USER_DATA_BACKUP_KEY = "overlayed:dev:user-data-backup";
@@ -74,7 +78,7 @@ export const Developer = () => {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <div className="flex gap-4 pb-2">
+        <div className="flex flex-wrap gap-2 pb-2">
           <Button
             size="sm"
             variant="outline"
@@ -83,7 +87,7 @@ export const Developer = () => {
               await invoke("open_overlay_devtools");
             }}
           >
-            Open Devtools
+            {t("Open Devtools")}
           </Button>
           <Button
             size="sm"
@@ -92,11 +96,11 @@ export const Developer = () => {
               await invoke("open_config_dir");
             }}
           >
-            Open Config Dir
+            {t("Open Config Dir")}
           </Button>
         </div>
         {import.meta.env.DEV && (
-          <div className="flex gap-4 pb-2">
+          <div className="flex flex-wrap gap-2 pb-2">
             <Button
               size="sm"
               variant="outline"
@@ -104,7 +108,7 @@ export const Developer = () => {
                 localStorage.removeItem(FTUE_PIN_TRAY_TIP_KEY);
               }}
             >
-              Reset FTUE tip
+              {t("Reset FTUE tip")}
             </Button>
             <Button
               size="sm"
@@ -113,10 +117,10 @@ export const Developer = () => {
                 void simulateTokenExpiryForTesting();
               }}
             >
-              Expire Auth
+              {t("Expire Auth")}
             </Button>
             <Button size="sm" variant="outline" onClick={restoreTokenAfterTesting}>
-              Restore Auth
+              {t("Restore Auth")}
             </Button>
             <Button
               size="sm"
@@ -125,7 +129,7 @@ export const Developer = () => {
                 await invoke("simulate_error_screen");
               }}
             >
-              Simulate Error Screen
+              {t("Simulate Error Screen")}
             </Button>
           </div>
         )}
@@ -146,17 +150,18 @@ const canaryVersionToCommit = (version: string) => {
 };
 
 export const AppInfo = () => {
+  const t = useTranslation();
   const platformInfo = usePlatformInfo();
 
   const urlForVersion = platformInfo.canary
-    ? `https://github.com/overlayeddev/overlayed/commit/${canaryVersionToCommit(platformInfo.appVersion)}`
-    : `https://github.com/overlayeddev/overlayed/releases/tag/v${platformInfo.appVersion}`;
+    ? `${UPSTREAM_REPOSITORY}/commit/${canaryVersionToCommit(platformInfo.appVersion)}`
+    : `${FORK_REPOSITORY}/releases/tag/v${platformInfo.appVersion}`;
 
   return (
-    <div className="flex items-center gap-2 pb-4 text-zinc-400">
+    <div className="flex flex-wrap items-center gap-2 pb-2 text-zinc-400">
       <div>
         <p className="text-sm">
-          <strong>OS</strong> {platformInfo.os} {platformInfo.kernalVersion} {platformInfo.arch}
+          <strong>{t("OS")}</strong> {platformInfo.os} {platformInfo.kernalVersion} {platformInfo.arch}
         </p>
       </div>
       <span className="text-xs">/</span>
@@ -168,7 +173,7 @@ export const AppInfo = () => {
       <span className="text-sm">/</span>
       <div>
         <p className="text-sm">
-          <strong>App</strong>{" "}
+          <strong>{t("App")}</strong>{" "}
           <a target="_blank" rel="noreferrer" href={urlForVersion}>
             {platformInfo.appVersion}
           </a>
@@ -179,9 +184,11 @@ export const AppInfo = () => {
 };
 
 export const Account = () => {
+  const t = useTranslation();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
   const [user, setUser] = useState<VoiceUser | null>(null);
+  const { value: language } = useConfigValue("language");
   const [tokenExpires, setTokenExpires] = useState(localStorage.getItem("discord_access_token_expiry"));
   const { pin: pinned } = usePin();
 
@@ -214,7 +221,7 @@ export const Account = () => {
   const avatarUrl = `https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`;
   return (
     <div>
-      <div className="h-[282px]">
+      <div className="space-y-3">
         <div className="flex items-center mb-2">
           {user?.id && (
             <Avatar className="w-16 h-16 mr-3">
@@ -230,24 +237,25 @@ export const Account = () => {
                 </p>
               </div>
             ) : (
-              <p>Please Login to use Overlayed</p>
+              <p>{t("Please Login to use Overlayed")}</p>
             )}
 
             <div className="pb-4">
               {tokenExpires && (
                 <p className="text-sm">
-                  <strong>Token Expires</strong> {dateFns.formatDistanceToNow(new Date(tokenExpires))}
+                  <strong>{t("Token Expires")}</strong>{" "}
+                  {dateFns.formatDistanceToNow(new Date(tokenExpires), { locale: language === "uk" ? uk : undefined })}
                 </p>
               )}
             </div>
           </div>
         </div>
-        <div className="flex flex-row gap-4 pb-4">
+        <div className="flex flex-wrap gap-3 pb-2">
           <div>
             <Button
               size="sm"
               variant="outline"
-              className="w-24 flex items-center justify-center"
+              className="gap-2"
               onClick={async () => {
                 try {
                   await invoke("set_pin", { value: !pinned });
@@ -257,7 +265,7 @@ export const Account = () => {
               }}
             >
               <Pin className={pinned ? "mr-2 h-4 w-4 text-yellow-400" : "mr-2 h-4 w-4"} size={16} />
-              {pinned ? "Unpin" : "Pin"}
+              {t(pinned ? "Unpin" : "Pin")}
             </Button>
           </div>
           <div>
@@ -268,8 +276,8 @@ export const Account = () => {
               open={showLogoutDialog}
             >
               <DialogTrigger asChild>
-                <Button size="sm" disabled={!user?.id} className="w-20">
-                  Logout
+                <Button size="sm" disabled={!user?.id}>
+                  {t("Logout")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[80%]">
@@ -286,16 +294,16 @@ export const Account = () => {
                   }}
                 >
                   <DialogHeader>
-                    <DialogTitle className="mb-4 text-xl text-white">Logout</DialogTitle>
+                    <DialogTitle className="mb-4 text-xl text-white">{t("Logout")}</DialogTitle>
                     <DialogDescription className="mb-4 text-xl text-white">
-                      Are you sure you want to log out of Overlayed?
+                      {t("Are you sure you want to log out of Overlayed?")}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
                     <DialogClose asChild>
-                      <Button variant="secondary">Cancel</Button>
+                      <Button variant="secondary">{t("Cancel")}</Button>
                     </DialogClose>
-                    <Button type="submit">Confirm Logout</Button>
+                    <Button type="submit">{t("Confirm Logout")}</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -309,9 +317,7 @@ export const Account = () => {
             open={showQuitDialog}
           >
             <DialogTrigger asChild>
-              <Button size="sm" className="w-20">
-                Quit
-              </Button>
+              <Button size="sm">{t("Quit")}</Button>
             </DialogTrigger>
             <DialogContent className="w-[80%]">
               <form
@@ -322,17 +328,17 @@ export const Account = () => {
                 }}
               >
                 <DialogHeader>
-                  <DialogTitle className="mb-4 text-xl text-white">Quit Overlayed</DialogTitle>
+                  <DialogTitle className="mb-4 text-xl text-white">{t("Quit Overlayed")}</DialogTitle>
                   <DialogDescription className="mb-4 text-xl text-white">
-                    Are you sure you want to quit the Overlayed app?
+                    {t("Are you sure you want to quit the Overlayed app?")}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button variant="secondary">Cancel</Button>
+                    <Button variant="secondary">{t("Cancel")}</Button>
                   </DialogClose>
                   <Button variant="destructive" type="submit">
-                    Quit
+                    {t("Quit")}
                   </Button>
                 </DialogFooter>
               </form>

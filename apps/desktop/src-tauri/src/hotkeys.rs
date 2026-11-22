@@ -9,7 +9,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-use crate::{commands, constants::*, HideTaskbarWhenPinned, Pinned, TrayMenu};
+use crate::{commands, constants::*, Pinned, TaskbarHideMode, TrayMenu};
 
 const HOTKEYS_UPDATE: &str = "hotkeys_update";
 pub const HOTKEY_ACTION: &str = "hotkey_action";
@@ -20,6 +20,7 @@ pub const SHOW_OVERLAY: &str = "show_overlay";
 pub enum HotkeyCommand {
   Pin,
   ToggleVisibility,
+  ToggleSpeakingOnly,
   NextMonitor,
   OpenSettings,
 }
@@ -264,7 +265,7 @@ pub async fn suspend_hotkeys(
   Ok(status)
 }
 
-fn run_action(app: &AppHandle, command: HotkeyCommand) {
+pub fn run_action(app: &AppHandle, command: HotkeyCommand) {
   let result = match command {
     HotkeyCommand::Pin => toggle_overlay_pin(app),
     HotkeyCommand::OpenSettings => {
@@ -298,7 +299,7 @@ fn update_pin(app: &AppHandle, value: Option<bool>) -> Result<(), String> {
       };
       let pinned = app_handle.state::<Pinned>();
       let menu = app_handle.state::<TrayMenu>();
-      let taskbar = app_handle.state::<HideTaskbarWhenPinned>();
+      let taskbar = app_handle.state::<Mutex<TaskbarHideMode>>();
       match value {
         Some(value) => commands::set_pin(window.clone(), pinned, menu, taskbar, value),
         None => commands::toggle_pin(window.clone(), pinned, menu, taskbar),

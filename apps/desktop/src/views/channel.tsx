@@ -8,14 +8,15 @@ import { getChannelName } from "@/utils/channel";
 export const ChannelView = ({
   alignDirection,
   anchored,
-  displayOnly,
+  pinned,
 }: {
   alignDirection: DirectionLR;
   anchored: boolean;
-  displayOnly: boolean;
+  pinned: boolean;
 }) => {
   const { users, me, currentChannel } = useAppStore();
 
+  const { value: hideRoomName } = useConfigValue("hideRoomName");
   const { value: showOnlyTalkingUsers } = useConfigValue("showOnlyTalkingUsers");
   const { value: showOwnUser } = useConfigValue("showOwnUser");
   const { value: opacity } = useConfigValue("opacity");
@@ -41,7 +42,6 @@ export const ChannelView = ({
       alignDirection={alignDirection}
       opacity={opacity}
       opacityTarget={opacityTarget}
-      userScale={userScale}
       anchored={anchored}
     />
   ));
@@ -69,18 +69,16 @@ export const ChannelView = ({
                 "items-start": alignDirection === "left",
                 "items-end": alignDirection === "right",
               })
-            : cn("py-2 h-full", {
+            : cn("py-2 h-full overflow-auto", {
                 "flex flex-wrap justify-center": alignDirection === "center",
                 "flex flex-1 flex-col": alignDirection !== "center",
                 "justify-end": alignDirection !== "center" && vertical === "bottom",
                 "justify-start": alignDirection !== "center" && vertical !== "bottom",
-                "overflow-auto": userScale === 100,
-                "overflow-visible": userScale !== 100,
               })
         }
-        style={anchored ? undefined : { maxHeight: "100%" }}
+        style={{ zoom: userScale / 100, opacity: opacityTarget === "entire-overlay" ? opacity / 100 : undefined }}
       >
-        {displayOnly && channelName && (
+        {pinned && !hideRoomName && channelName && (
           <div
             className="mx-2 mb-1 max-w-[280px] truncate rounded-md px-2 py-1 text-xs font-semibold text-white"
             title={channelName}

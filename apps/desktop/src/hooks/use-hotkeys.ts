@@ -31,6 +31,16 @@ export const useHotkeys = () => {
     let actions = Promise.resolve();
 
     const receiveConfig = (value: OverlayedConfig) => {
+      if (config?.showOnlyTalkingUsers !== value.showOnlyTalkingUsers) {
+        void invoke("set_speaking_only_checked", { checked: value.showOnlyTalkingUsers }).catch(error =>
+          console.warn("Could not update the speaking-only tray item", error)
+        );
+      }
+      if (config?.language !== value.language) {
+        void invoke("set_tray_language", { language: value.language }).catch(error =>
+          console.warn("Could not update the tray language", error)
+        );
+      }
       config = value;
       const key = JSON.stringify(value.hotkeys);
       if (key === bindingsKey) return;
@@ -77,6 +87,14 @@ export const useHotkeys = () => {
       await emit("config_update", value);
     };
 
+    const toggleSpeakingOnly = async () => {
+      const enabled = await Config.get("showOnlyTalkingUsers");
+      await Config.set("showOnlyTalkingUsers", !enabled);
+      const value = await Config.getConfig();
+      receiveConfig(value);
+      await emit("config_update", value);
+    };
+
     const enqueue = (action: () => Promise<void>) => {
       actions = actions
         .then(async () => {
@@ -93,6 +111,7 @@ export const useHotkeys = () => {
       listen<HotkeyCommand>("hotkey_action", event => {
         if (event.payload === "toggle-visibility") enqueue(() => setVisible(!useAppStore.getState().visible));
         if (event.payload === "next-monitor") enqueue(nextMonitor);
+        if (event.payload === "toggle-speaking-only") enqueue(toggleSpeakingOnly);
       }),
       listen("show_overlay", () => enqueue(() => setVisible(true))),
     ]);

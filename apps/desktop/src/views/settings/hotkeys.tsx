@@ -1,3 +1,4 @@
+import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import Config, { type HotkeyBinding, type HotkeyCommand, type OverlayedConfig } from "@/config";
 import type { HotkeysStatus } from "@/hooks/use-hotkeys";
@@ -13,6 +14,7 @@ const commands: { command: HotkeyCommand; label: string }[] = [
   { command: "toggle-visibility", label: "Show / hide overlay" },
   { command: "next-monitor", label: "Next monitor (fixed position)" },
   { command: "open-settings", label: "Open settings" },
+  { command: "toggle-speaking-only", label: "Toggle speaking-only overlay" },
 ];
 
 function bindingLabel(active: boolean, binding: HotkeyBinding | undefined, macos: boolean) {
@@ -22,6 +24,7 @@ function bindingLabel(active: boolean, binding: HotkeyBinding | undefined, macos
 }
 
 export const Hotkeys = () => {
+  const t = useTranslation();
   const [bindings, setBindings] = useState<HotkeyBinding[]>([]);
   const [status, setStatus] = useState<HotkeysStatus | null>(null);
   const [recording, setRecording] = useState<HotkeyCommand | null>(null);
@@ -229,8 +232,10 @@ export const Hotkeys = () => {
 
   return (
     <div className="flex flex-col gap-2 text-sm" data-hotkeys-panel>
-      <p className="text-xs text-zinc-400">The next-monitor hotkey only works with Fixed position.</p>
-      {status?.supported === false && <p className="text-xs text-zinc-400">Global hotkeys don't work on Wayland.</p>}
+      <p className="text-xs text-zinc-400">{t("The next-monitor hotkey only works with Fixed position.")}</p>
+      {status?.supported === false && (
+        <p className="text-xs text-zinc-400">{t("Global hotkeys don't work on Wayland.")}</p>
+      )}
       {commands.map(({ command, label }) => {
         const binding = bindings.find(binding => binding.command === command);
         const result = status?.bindings.find(result => result.command === command && result.key === binding?.key);
@@ -242,9 +247,9 @@ export const Hotkeys = () => {
           <div key={command} className="rounded-md border border-zinc-700 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-medium">{label}</p>
+                <p className="font-medium">{t(label)}</p>
                 <p className="truncate text-xs text-zinc-400" title={binding?.key}>
-                  {bindingLabel(active, binding, macos)}
+                  {t(bindingLabel(active, binding, macos))}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
@@ -252,29 +257,29 @@ export const Hotkeys = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs px-2"
+                  className="min-h-7 px-2 text-xs"
                   disabled={busy || !status?.supported || (!!recording && !active)}
-                  aria-label={`${active ? "Cancel recording" : "Record hotkey"} for ${label}`}
+                  aria-label={`${t(active ? "Cancel recording" : "Record hotkey")}: ${t(label)}`}
                   onClick={() => (active ? cancel() : startRecording(command))}
                 >
-                  {active ? "Cancel" : "Record"}
+                  {t(active ? "Cancel" : "Record")}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs px-2"
+                  className="min-h-7 px-2 text-xs"
                   disabled={busy || !!recording || !binding}
-                  aria-label={`Clear hotkey for ${label}`}
+                  aria-label={`${t("Clear hotkey")}: ${t(label)}`}
                   onClick={() => clear(command)}
                 >
-                  Clear
+                  {t("Clear")}
                 </Button>
               </div>
             </div>
             {message && (
-              <p className="truncate text-xs text-red-400 mt-1" role="alert" title={message}>
-                {message}
+              <p className="mt-1 break-words text-xs text-red-400" role="alert" title={t(message)}>
+                {t(message)}
               </p>
             )}
           </div>
@@ -282,7 +287,7 @@ export const Hotkeys = () => {
       })}
       {error && (
         <p className="text-xs text-red-400" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>
