@@ -1,3 +1,0 @@
-# Desktop
-
-Tauri desktop app

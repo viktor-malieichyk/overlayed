@@ -12,6 +12,8 @@ mod placement;
 mod tray;
 mod voice_notification;
 mod window_custom;
+#[cfg(windows)]
+mod windows_icons;
 
 use crate::commands::*;
 use constants::*;
@@ -84,7 +86,9 @@ fn apply_macos_specifics(window: &WebviewWindow) {
 
 fn main() {
   let flags = StateFlags::POSITION | StateFlags::SIZE;
-  let window_state_plugin = tauri_plugin_window_state::Builder::default().with_state_flags(flags);
+  let window_state_plugin = tauri_plugin_window_state::Builder::default()
+    .with_state_flags(flags)
+    .with_denylist(&[placement::DISPLAY_PREVIEW_WINDOW]);
   let log_level = std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
 
   let log_level_filter = log::LevelFilter::from_str(&log_level).unwrap_or(log::LevelFilter::Info);
@@ -151,6 +155,13 @@ fn main() {
       let window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
       let settings = app.get_webview_window(SETTINGS_WINDOW_NAME).unwrap();
 
+      #[cfg(windows)]
+      for app_window in [&window, &settings] {
+        if let Err(error) = windows_icons::refresh_window_icons(app_window) {
+          log::warn!("Could not set window icons: {error}");
+        }
+      }
+
       info!("Log level set to: {log_level}");
       // the window should always be on top
       #[cfg(not(target_os = "macos"))]
@@ -206,6 +217,7 @@ fn main() {
       tray::set_tray_language,
       open_config_dir,
       placement::get_monitors,
+      placement::preview_display,
       placement::apply_placement,
       placement::release_placement,
       hotkeys::set_hotkeys,
@@ -248,6 +260,19 @@ fn main() {
               // we persist the latest bounds even if the process is terminated
               app.save_window_state(StateFlags::POSITION | StateFlags::SIZE);
             }
+          }
+
+          #[cfg(windows)]
+          WEvent::ScaleFactorChanged { .. }
+            if label == MAIN_WINDOW_NAME || label == SETTINGS_WINDOW_NAME =>
+          {
+            if let Some(window) = app.get_webview_window(&label) {
+              if let Err(error) = windows_icons::refresh_window_icons(&window) {
+                log::warn!("Could not refresh window icons: {error}");
+              }
+            }
+            let pinned = app.state::<Pinned>().0.load(std::sync::atomic::Ordering::Relaxed);
+            commands::update_tray_icon(app, pinned);
           }
 
           _ => {}

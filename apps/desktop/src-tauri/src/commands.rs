@@ -3,7 +3,9 @@ use std::{
   sync::{atomic::AtomicBool, Mutex},
 };
 
-use tauri::{image::Image, menu::Menu, AppHandle, Emitter, Manager, State, WebviewWindow, Wry};
+#[cfg(not(windows))]
+use tauri::image::Image;
+use tauri::{menu::Menu, AppHandle, Emitter, Manager, State, WebviewWindow, Wry};
 
 use crate::{constants::*, Pinned, TaskbarHideMode, TrayMenu};
 
@@ -175,23 +177,36 @@ fn _set_pin(
 }
 
 pub fn update_tray_icon(app: &AppHandle, pinned: bool) {
+  let Some(tray) = app.tray_by_id(OVERLAYED) else {
+    return;
+  };
   #[cfg(windows)]
-  let icon_bytes = if pinned {
-    include_bytes!("../icons/tray/windows-pinned.ico").as_slice()
-  } else {
-    include_bytes!("../icons/tray/windows.ico").as_slice()
-  };
+  let icon = crate::windows_icons::tray_icon(pinned);
   #[cfg(not(windows))]
-  let icon_bytes = if pinned {
-    include_bytes!("../icons/tray/icon-pinned.ico").as_slice()
-  } else {
-    include_bytes!("../icons/tray/icon.ico").as_slice()
+  let icon = {
+    let scale = app
+      .primary_monitor()
+      .ok()
+      .flatten()
+      .map_or(1.0, |monitor| monitor.scale_factor());
+    let (normal, pinned_icon): (&[u8], &[u8]) = match (16.0 * scale).round() as u32 {
+      0..=19 => (
+        include_bytes!("../icons/source/UO-square-16.png"),
+        include_bytes!("../icons/tray/pinned-16.png"),
+      ),
+      20..=27 => (
+        include_bytes!("../icons/source/UO-square-24.png"),
+        include_bytes!("../icons/tray/pinned-24.png"),
+      ),
+      _ => (
+        include_bytes!("../icons/source/UO-square-32.png"),
+        include_bytes!("../icons/tray/pinned-32.png"),
+      ),
+    };
+    Image::from_bytes(if pinned { pinned_icon } else { normal })
   };
-
-  if let Some(tray) = app.tray_by_id(OVERLAYED) {
-    if let Ok(icon) = Image::from_bytes(icon_bytes) {
-      tray.set_icon(Some(icon));
-    }
+  if let Ok(icon) = icon {
+    tray.set_icon(Some(icon));
   }
 }
 

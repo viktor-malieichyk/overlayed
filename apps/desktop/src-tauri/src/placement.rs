@@ -5,9 +5,14 @@ use std::sync::{
 };
 #[cfg(any(target_os = "macos", test))]
 use tauri::LogicalPosition;
-use tauri::{LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize, State, WebviewWindow};
+use tauri::{
+  LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize, State, WebviewUrl, WebviewWindow,
+  WebviewWindowBuilder,
+};
 
-use crate::constants::MAIN_WINDOW_NAME;
+use crate::constants::{MAIN_WINDOW_NAME, SETTINGS_WINDOW_NAME};
+
+pub const DISPLAY_PREVIEW_WINDOW: &str = "display-preview";
 
 // Mirrors the main window minimum in tauri.conf.json.
 const MANUAL_MIN_SIZE: LogicalSize<f64> = LogicalSize {
@@ -112,6 +117,103 @@ pub fn get_monitors(window: WebviewWindow) -> Result<MonitorsResponse, String> {
     monitors,
     positioning_supported: positioning_supported(),
   })
+}
+
+#[tauri::command]
+pub async fn preview_display(
+  window: WebviewWindow,
+  origin: Option<PhysicalPosition<i32>>,
+) -> Result<(), String> {
+  if window.label() != SETTINGS_WINDOW_NAME || !positioning_supported() {
+    return Ok(());
+  }
+  let app = window.app_handle().clone();
+  if origin.is_some()
+    && app.get_webview_window(DISPLAY_PREVIEW_WINDOW).is_none()
+    && window.is_focused().map_err(|error| error.to_string())?
+  {
+    WebviewWindowBuilder::new(
+      &app,
+      DISPLAY_PREVIEW_WINDOW,
+      WebviewUrl::App("display-preview.html".into()),
+    )
+    .visible(false)
+    .focused(false)
+    .transparent(true)
+    .decorations(false)
+    .shadow(false)
+    .resizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .build()
+    .map_err(|error| error.to_string())?;
+  }
+  let (send, receive) = tokio::sync::oneshot::channel();
+  app
+    .clone()
+    .run_on_main_thread(move || {
+      let result = (|| -> tauri::Result<()> {
+        let Some(preview) = app.get_webview_window(DISPLAY_PREVIEW_WINDOW) else {
+          return Ok(());
+        };
+        let monitor = match origin {
+          Some(origin) if window.is_focused()? => window
+            .available_monitors()?
+            .into_iter()
+            .find(|monitor| *monitor.position() == origin),
+          _ => None,
+        };
+        let Some(monitor) = monitor else {
+          return set_preview_visible(&preview, false);
+        };
+        set_preview_visible(&preview, false)?;
+        preview.set_ignore_cursor_events(true)?;
+        let (position, size) = (*monitor.position(), *monitor.size());
+        #[cfg(target_os = "macos")]
+        let (position, size) = logical_geometry(position, size, monitor.scale_factor());
+        preview.set_position(position)?;
+        preview.set_size(size)?;
+        preview.set_position(position)?;
+        set_preview_visible(&preview, true)
+      })();
+      let _ = send.send(result);
+    })
+    .map_err(|error| error.to_string())?;
+  receive
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
+}
+
+fn set_preview_visible(window: &WebviewWindow, visible: bool) -> tauri::Result<()> {
+  #[cfg(windows)]
+  {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
+
+    // Tauri's show can activate a window on subsequent shows.
+    let hwnd = window.hwnd()?;
+    let command = if visible { SW_SHOWNOACTIVATE } else { SW_HIDE };
+    unsafe { ShowWindow(hwnd.0 as _, command) };
+    Ok(())
+  }
+  #[cfg(target_os = "macos")]
+  {
+    use tauri_nspanel::objc::{msg_send, sel, sel_impl};
+
+    if visible {
+      let window = window.ns_window()? as cocoa::base::id;
+      let _: () = unsafe { msg_send![window, orderFrontRegardless] };
+      Ok(())
+    } else {
+      window.hide()
+    }
+  }
+  #[cfg(not(any(windows, target_os = "macos")))]
+  if visible {
+    window.show()
+  } else {
+    window.hide()
+  }
 }
 
 fn resolve_monitor(window: &WebviewWindow, name: Option<&str>) -> Result<Monitor, String> {

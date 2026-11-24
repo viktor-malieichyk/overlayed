@@ -125,16 +125,13 @@ export const Configuration = () => {
 
             await emit("config_update", await Config.getConfig());
           }}
-          className="settings-select w-52"
+          className="settings-select w-1/2"
         >
-          <option value="all" className="bg-zinc-800 text-white">
-            {t("Dim users who aren’t speaking")}
+          <option value="all-users" className="bg-zinc-800 text-white">
+            {t("All users")}
           </option>
-          <option value="entire-overlay" className="bg-zinc-800 text-white">
-            {t("Entire voice overlay")}
-          </option>
-          <option value="username-box" className="bg-zinc-800 text-white">
-            {t("Username background")}
+          <option value="non-speaking" className="bg-zinc-800 text-white">
+            {t("Only users who aren’t speaking")}
           </option>
         </select>
       </div>

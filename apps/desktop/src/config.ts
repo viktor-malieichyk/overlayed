@@ -11,7 +11,7 @@ export type DirectionTB = "top" | "bottom";
 
 export type TaskbarHideMode = "never" | "pinned" | "always";
 
-export type OpacityTarget = "all" | "username-box" | "entire-overlay";
+export type OpacityTarget = "all-users" | "non-speaking";
 
 export type HotkeyCommand = "pin" | "toggle-visibility" | "next-monitor" | "open-settings" | "open-history" | "toggle-speaking-only";
 export interface HotkeyBinding {
@@ -42,6 +42,7 @@ export interface OverlayedConfig {
   joinHistoryNotifications: boolean;
   showHistoryJoinsAndLeaves: boolean;
   showHistoryVoiceActivity: boolean;
+  hideOwnHistoryVoiceActivity: boolean;
   showOnlyTalkingUsers: boolean;
   showOwnUser: boolean;
   opacity: number;
@@ -70,10 +71,11 @@ export const DEFAULT_OVERLAYED_CONFIG: OverlayedConfig = {
   joinHistoryNotifications: true,
   showHistoryJoinsAndLeaves: true,
   showHistoryVoiceActivity: false,
+  hideOwnHistoryVoiceActivity: false,
   showOnlyTalkingUsers: false,
   showOwnUser: true,
   opacity: 100,
-  opacityTarget: "entire-overlay",
+  opacityTarget: "all-users",
   maxUsernameLength: 40,
   userScale: 100,
   taskbarHideMode: "always",
@@ -111,7 +113,8 @@ export class Config {
   private async readConfig(fallback: OverlayedConfig, initializeLanguage = false): Promise<OverlayedConfig> {
     try {
       const raw = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig }).catch(() => null);
-      const saved: Partial<OverlayedConfig> & {
+      const saved: Partial<Omit<OverlayedConfig, "opacityTarget">> & {
+        opacityTarget?: OpacityTarget | "all" | "username-box" | "entire-overlay";
         hideTaskbarWhenPinned?: boolean;
         showHistoryJoins?: boolean;
         showHistoryLeaves?: boolean;
@@ -124,6 +127,7 @@ export class Config {
         placementOffsetY,
         showHistoryJoins,
         showHistoryLeaves,
+        opacityTarget,
         ...config
       } = saved;
       if (
@@ -146,6 +150,7 @@ export class Config {
       const value: OverlayedConfig = {
         ...DEFAULT_OVERLAYED_CONFIG,
         ...config,
+        opacityTarget: opacityTarget === "all" || opacityTarget === "non-speaking" ? "non-speaking" : "all-users",
         // Preserve manually positioned overlays from before fixed placement was added.
         placementMode: config.placementMode ?? (raw === null ? fallback.placementMode : "manual"),
         showHistoryJoinsAndLeaves:

@@ -129,6 +129,7 @@ impl Tray {
     let menu = Tray::create_tray_menu(app_handle)?;
     let _ = TrayIconBuilder::with_id(OVERLAYED)
       .tooltip(app_handle.package_info().name.clone())
+      .icon_as_template(false)
       .menu(&menu)
       .on_menu_event(Self::handle_menu_events)
       .build(app_handle)?;

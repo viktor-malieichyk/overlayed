@@ -1,6 +1,6 @@
 [package]
 name = "universaloverlay"
-version = "0.7.0-beta.3"
+version = "0.7.0-beta.4"
 description = "Voice chat overlay for Discord"
 authors = ["Team Overlayed"]
 license = "AGPL-3.0"
@@ -57,4 +57,7 @@ tauri-plugin-global-shortcut = "=2.2.0"
 custom-protocol = ["tauri/custom-protocol"]
 
 [target.'cfg(windows)'.dependencies]
+ico = "0.3.0"
 tauri-winrt-notification = "0.2.1"
+windows-sys = { version = "0.59.0", features = ["Win32_System_LibraryLoader", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
+winreg = "0.52.0"

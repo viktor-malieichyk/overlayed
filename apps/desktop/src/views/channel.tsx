@@ -40,8 +40,7 @@ export const ChannelView = ({
       key={item.id}
       item={item}
       alignDirection={alignDirection}
-      opacity={opacity}
-      opacityTarget={opacityTarget}
+      opacity={opacityTarget === "non-speaking" && item.talking ? 100 : opacity}
       anchored={anchored}
     />
   ));
@@ -76,16 +75,12 @@ export const ChannelView = ({
                 "justify-start": alignDirection !== "center" && vertical !== "bottom",
               })
         }
-        style={{ zoom: userScale / 100, opacity: opacityTarget === "entire-overlay" ? opacity / 100 : undefined }}
+        style={{ zoom: userScale / 100 }}
       >
         {pinned && !hideRoomName && channelName && (
           <div
-            className="mx-2 mb-1 max-w-[280px] truncate rounded-md px-2 py-1 text-xs font-semibold text-white"
+            className="mx-2 mb-1 max-w-[280px] truncate rounded-md bg-[#282828] px-2 py-1 text-xs font-semibold text-white"
             title={channelName}
-            style={{
-              opacity: opacityTarget === "all" ? opacity / 100 : 1,
-              backgroundColor: `rgba(40, 40, 40, ${opacityTarget === "username-box" ? opacity / 100 : 1})`,
-            }}
           >
             {channelName}
           </div>

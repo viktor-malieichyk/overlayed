@@ -17,4 +17,6 @@ pnpm --filter desktop start
 
 Open the official Discord desktop client and authorize the overlay when prompted.
 
+See [local build and release instructions](LOCAL.md) for desktop packages and Windows release signing.
+
 UniversalOverlay is a fork of [Overlayed](https://github.com/overlayeddev/overlayed).

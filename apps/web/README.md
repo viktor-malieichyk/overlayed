@@ -1,19 +1,13 @@
-# Overlayed
+# Website
 
-The website for the marketing of overlayed.
+Run the site with mock download data from the repository root.
 
-
-### Running locally requires you to setup `wrangler` but you can run with out it just the download component wont work.
-
-
-### Without API
-
-```
-pnpm start --filter=web
+```sh
+pnpm --filter web start:mocked
 ```
 
-### With API
+To use the local API, configure [its environment](../api/README.md), then start both workspaces.
 
-```
+```sh
 pnpm start --filter=web --filter=api
 ```

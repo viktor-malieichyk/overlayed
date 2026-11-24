@@ -1,3 +1,43 @@
+#[cfg(windows)]
+async fn windows_sender(app: &tauri::AppHandle) -> Result<&'static String, String> {
+  use tauri::Manager;
+  use tokio::sync::OnceCell;
+  use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
+  static SENDER: OnceCell<String> = OnceCell::const_new();
+
+  SENDER
+    .get_or_try_init(|| async {
+      let config = app.config();
+      let name = config.product_name.as_deref().unwrap_or("UniversalOverlay");
+      // Give Windows a fresh notification sender without changing Tauri's
+      // bundle identifier, which also determines the settings directory.
+      let app_id = format!("{}.VoiceNotifications", config.identifier);
+      let directory = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+      let icon_path = directory.join("voice-notification-icon.png");
+      tokio::fs::create_dir_all(&directory)
+        .await
+        .map_err(|error| error.to_string())?;
+      tokio::fs::write(&icon_path, include_bytes!("../icons/stable/128x128.png"))
+        .await
+        .map_err(|error| error.to_string())?;
+
+      let user = RegKey::predef(HKEY_CURRENT_USER);
+      let (sender, _) = user
+        .create_subkey(format!(r"Software\Classes\AppUserModelId\{app_id}"))
+        .map_err(|error| error.to_string())?;
+      sender
+        .set_value("DisplayName", &name)
+        .and_then(|_| sender.set_value("IconUri", &icon_path.as_os_str()))
+        .map_err(|error| error.to_string())?;
+      Ok(app_id)
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn show_voice_notification(
   app: tauri::AppHandle,
@@ -66,11 +106,7 @@ pub async fn show_voice_notification(
     }
     .await;
 
-    let app_id = if tauri::is_dev() {
-      Toast::POWERSHELL_APP_ID
-    } else {
-      &app.config().identifier
-    };
+    let app_id = windows_sender(&app).await?;
     let mut toast = Toast::new(app_id).title(&title).text1(&body);
     if let Some(path) = image {
       toast = toast.icon(&path, IconCrop::Circular, "");

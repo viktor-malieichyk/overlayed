@@ -12,8 +12,7 @@
     "check:format": "turbo run check:format",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
     "lint": "turbo run lint",
-    "format": "turbo run format",
-    "dl-contrib": "tsx scripts/generate-contributors.ts"
+    "format": "turbo run format"
   },
   "type": "module",
   "devDependencies": {
@@ -22,7 +21,6 @@
     "dotenv": "^16.4.7",
     "eslint": "^9.19.0",
     "lint": "workspace:*",
-    "octokit": "^4.1.0",
     "prettier": "^3.4.2",
     "tsconfig": "workspace:*",
     "tsx": "^4.19.2",

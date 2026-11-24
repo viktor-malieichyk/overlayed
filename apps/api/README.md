@@ -1,4 +1,4 @@
-# api
+# API
 
 A CF worker that's is a REST API for handling updates, artifact stuff, and authentication.
 

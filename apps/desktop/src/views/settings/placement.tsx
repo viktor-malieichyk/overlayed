@@ -24,6 +24,14 @@ const anchors: PlacementAnchor[] = [
 
 type OffsetKey = keyof PlacementPreview;
 
+let displayPreview = Promise.resolve();
+
+function previewDisplay(origin: { x: number; y: number } | null) {
+  displayPreview = displayPreview
+    .then(() => invoke<void>("preview_display", { origin }))
+    .catch(error => console.warn("Could not highlight display", error));
+}
+
 function alignmentForAnchor(anchor: PlacementAnchor): { horizontal: DirectionLR | null; vertical: DirectionTB | null } {
   let horizontal: DirectionLR | null = null;
   let vertical: DirectionTB | null = null;
@@ -164,6 +172,24 @@ export const Placement = () => {
   const anchorIndex = Math.max(0, anchors.indexOf(placementAnchor));
   const horizontal = anchorIndex % 3;
   const vertical = Math.floor(anchorIndex / 3);
+  const displayX = selected?.x;
+  const displayY = selected?.y;
+
+  useEffect(() => {
+    if (response?.positioningSupported !== true || displayX === undefined || displayY === undefined) return;
+    const window = getCurrentWebviewWindow();
+    const origin = { x: displayX, y: displayY };
+    let disposed = false;
+    const unlisten = window.onFocusChanged(({ payload: focused }) => {
+      if (!disposed) previewDisplay(focused ? origin : null);
+    });
+    previewDisplay(origin);
+    return () => {
+      disposed = true;
+      previewDisplay(null);
+      void unlisten.then(stop => stop());
+    };
+  }, [response?.positioningSupported, displayX, displayY]);
 
   return (
     <div className="settings-stack">

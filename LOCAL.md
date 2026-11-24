@@ -1,64 +1,38 @@
-# Local Setup
+# Desktop builds and releases
 
-To contribute you will first need to fork the repo and make some adjustments to
-get it up and running on your local machine. Below are the steps to follow for you to get UniversalOverlay to run on your local machine.
+Follow [the README](README.md) to install dependencies. Run build commands from the repository root.
 
-# Prerequisites
-
-- Rust
-- Node
-- pnpm
-
-### 1. Fork & clone the repo
-
-Follow https://docs.github.com/en/get-started/quickstart/fork-a-repo
-
-### 2. Install the deps
-
-From the root of the monorepo run.
+## Stable build
 
 ```sh
-pnpm install
-```
-
-### 3. Start the desktop app
-
-From the root of the monorepo run
-```sh
-pnpm start --filter=desktop
-```
-
-### Running the Web & API 
-Since the API uses github API you'll need to create a `apps/web/.dev.vars` that has a `GITHUB_TOKEN` (github personal access toke).
-
-Then you'd run something like this to start both `api` and `web`.
-```
-pnpm start --filter=web --filter=api
-```
-
-If you want to use a mocked response you can run this command in the `apps/web` directory.
-
-```
-pnpm start:mocked
-
-```
-
-### 4. Building the latest version locally
-```
 pnpm build:desktop
 ```
 
-### 4b. Building locally without updater signing
-```
+## Build without updater signing
+
+```sh
 pnpm build:desktop:unsigned
 ```
 
-### 5. Building the canary version locally
-```
+## Canary build
+
+```sh
 pnpm build:canary
 ```
 
-### Windows x64 releases for this fork
+## Windows x64 releases
+
+On the Windows release VM, the signing key is at
+`%LOCALAPPDATA%\OverlayedForkSigning\updater.key`. Match its `updater.key.pub`
+against `plugins.updater.pubkey` in `tauri.conf.json` before signing.
+Unlock `updater-password.dpapi` with PowerShell `ConvertTo-SecureString`
+under the original Windows user and pass the password through the
+signing process environment.
+
+The portable encrypted backup is on the Mac host at
+`~/.tauri/universaloverlay-updater-backup`. Its `RECOVERY.txt` explains how to
+recover both files with the Mac's `~/.ssh/id_ed25519` identity. The DPAPI
+file alone will not restore signing on a replacement VM.
 
 Use the same updater signing key for every release. Keep the private key and its password outside the repository, and set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the build environment.
 

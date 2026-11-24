@@ -1,4 +1,4 @@
-import type { DirectionLR, OpacityTarget } from "@/config";
+import type { DirectionLR } from "@/config";
 import { useConfigValue } from "@/hooks/use-config-value";
 import type { OverlayedUser } from "../types";
 import { HeadphonesOff } from "./icons/headphones-off";
@@ -9,13 +9,11 @@ export const User = ({
   item,
   alignDirection,
   opacity,
-  opacityTarget,
   anchored,
 }: {
   item: OverlayedUser;
   alignDirection: DirectionLR;
   opacity: number;
-  opacityTarget: OpacityTarget;
   anchored: boolean;
 }) => {
   const { id, selfMuted, selfDeafened, talking, muted, deafened, avatarHash } = item;
@@ -24,7 +22,6 @@ export const User = ({
 
   const talkingClass = talking ? "border-green-500" : "border-zinc-800";
   const mutedClass = selfMuted || muted ? "text-zinc-400" : "";
-  const opacityStyle = talking ? "100%" : `${opacity}%`;
   const { value: maxUsernameLength } = useConfigValue("maxUsernameLength");
 
   const displayName = (() => {
@@ -76,9 +73,7 @@ export const User = ({
         anchored ? "w-max shrink-0" : undefined,
         anchored && alignDirection === "center" ? "pb-2" : undefined
       )}
-      style={{
-        ...(opacityTarget === "all" ? { opacity: opacityStyle } : {}),
-      }}
+      style={{ opacity: opacity / 100 }}
     >
       <div className={`pointer-events-none relative rounded-full border-2 ${talkingClass}`}>
         <img
@@ -103,10 +98,10 @@ export const User = ({
           anchored
             ? "flex shrink-0 pointer-events-none items-center rounded-md p-1 pl-2 pr-2"
             : "max-w-[calc(100%-50px)] md:flex hidden pointer-events-none items-center rounded-md p-1 pl-2 pr-2",
+          "bg-[#282828]",
           mutedClass,
           alignDirection === "center" ? "hidden md:hidden" : undefined
         )}
-        style={{ backgroundColor: `rgba(40, 40, 40, ${opacityTarget === "username-box" ? opacity / 100 : 1})` }}
       >
         <span className="truncate text-ellipsis">{displayName}</span>
         <div className="flex">

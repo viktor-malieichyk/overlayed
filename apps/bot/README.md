@@ -1,10 +1,10 @@
-# api
+# Discord bot
 
-A CF worker that's is a REST API for handling discord app
+A Cloudflare Worker that handles Discord application commands.
 
 ### Running locally
 
-You will need a to create an `.dev.vars` with the following:
+Create `apps/bot/.dev.vars` with these values, then run `pnpm --filter bot start`.
 
 ```
 DISCORD_APPLICATION_ID=
