@@ -59,33 +59,16 @@ pub fn simulate_error_screen(window: WebviewWindow) {
   }
 }
 
-#[tauri::command]
-pub fn toggle_pin(
-  window: WebviewWindow,
-  pin: State<Pinned>,
-  menu: State<TrayMenu>,
-  hide_taskbar: State<Mutex<TaskbarHideMode>>,
-) {
-  let app = window.app_handle();
-  let value = !get_pin(app.state::<Pinned>());
-
-  // Always target the main overlay window so pinning from other windows
-  // (e.g., settings) does not affect those windows.
-  if let Some(main_win) = app.get_webview_window(MAIN_WINDOW_NAME) {
-    _set_pin(value, &main_win, pin, menu, hide_taskbar);
-  }
-}
-
-#[tauri::command]
 pub fn set_pin(
   window: WebviewWindow,
   pin: State<Pinned>,
   menu: State<TrayMenu>,
   hide_taskbar: State<Mutex<TaskbarHideMode>>,
   value: bool,
+  remember: bool,
 ) {
   if let Some(main_win) = window.app_handle().get_webview_window(MAIN_WINDOW_NAME) {
-    _set_pin(value, &main_win, pin, menu, hide_taskbar);
+    _set_pin(value, &main_win, pin, menu, hide_taskbar, remember);
   }
 }
 
@@ -136,22 +119,18 @@ fn _set_pin(
   pinned: State<Pinned>,
   menu: State<TrayMenu>,
   hide_taskbar: State<Mutex<TaskbarHideMode>>,
+  remember: bool,
 ) {
-  // @d0nutptr cooked here
   pinned.store(value, std::sync::atomic::Ordering::Relaxed);
 
-  // emit to the main window and also broadcast to all webviews so other
-  // windows (like settings) can react to the change.
-  window.emit(TRAY_TOGGLE_PIN, value).unwrap();
-
-  // Broadcast the pin change to all webviews so other
-  // windows (like settings) can react to the change.
   let app_handle = window.app_handle();
-  if let Some(main_win) = app_handle.get_webview_window(MAIN_WINDOW_NAME) {
-    let _ = main_win.emit(TRAY_TOGGLE_PIN, value);
+  let hidden = app_handle.state::<crate::hotkeys::OverlayVisibility>().is_hidden();
+  if let Err(error) = crate::hotkeys::set_cursor_passthrough(window, hidden || value) {
+    log::warn!("Could not update overlay cursor handling: {error}");
   }
-  if let Some(settings_win) = app_handle.get_webview_window(SETTINGS_WINDOW_NAME) {
-    let _ = settings_win.emit(TRAY_TOGGLE_PIN, value);
+  let update = serde_json::json!({ "pinned": value, "remember": remember });
+  if let Err(error) = app_handle.emit(TRAY_TOGGLE_PIN, update) {
+    log::warn!("Could not publish the overlay pin state: {error}");
   }
 
   // invert the label for the tray
@@ -170,7 +149,7 @@ fn _set_pin(
     let id = webview.ns_window() as cocoa::base::id;
 
     #[cfg(target_arch = "aarch64")]
-    id.setIgnoresMouseEvents_(value);
+    id.setIgnoresMouseEvents_(hidden || value);
 
     // convert bool into number
     #[cfg(target_arch = "x86_64")]
@@ -179,8 +158,6 @@ fn _set_pin(
       id.setHasShadow_(value);
     }
   });
-
-  window.set_ignore_cursor_events(value);
 
   apply_taskbar_visibility(window.app_handle(), value, *hide_taskbar.lock().unwrap());
 
@@ -227,4 +204,21 @@ pub fn open_config_dir(app: tauri::AppHandle) {
       .opener()
       .open_path(path.to_string_lossy().to_string(), None::<&str>);
   }
+}
+#[tauri::command]
+pub fn get_initial_language() -> &'static str {
+  #[cfg(windows)]
+  {
+    #[link(name = "kernel32")]
+    extern "system" {
+      fn GetUserDefaultUILanguage() -> u16;
+    }
+    const PRIMARY_LANGUAGE_MASK: u16 = 0x03ff;
+    const LANG_UKRAINIAN: u16 = 0x22;
+    // SAFETY: The Win32 function takes no arguments and returns a LANGID.
+    if unsafe { GetUserDefaultUILanguage() } & PRIMARY_LANGUAGE_MASK == LANG_UKRAINIAN {
+      return "uk";
+    }
+  }
+  "en"
 }

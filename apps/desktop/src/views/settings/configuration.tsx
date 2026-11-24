@@ -224,7 +224,7 @@ export const Configuration = () => {
           htmlFor="hideTaskbar"
           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
-          {t("Hide overlay from taskbar")}
+          {t("Hide window from the taskbar")}
         </label>
         <select
           id="hideTaskbar"

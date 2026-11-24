@@ -1,5 +1,5 @@
 import { useTranslation } from "@/i18n";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Settings, Pin, ArrowLeftToLine, ArrowRightToLine, ChevronsRightLeft, X, type LucideIcon } from "lucide-react";
 import { usePlatformInfo } from "@/hooks/use-platform-info";
 import React, { useEffect } from "react";
@@ -13,6 +13,7 @@ import { cn } from "@/utils/tw";
 import { Metric, track } from "@/metrics";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const mapping = {
   left: 0,
@@ -46,18 +47,15 @@ const horizontalAlignments: Alignment[] = [
 
 export const NavBar = ({
   pin,
-  anchored,
   alignDirection,
   setAlignDirection,
 }: {
   pin: boolean;
-  anchored: boolean;
   alignDirection: DirectionLR;
   setAlignDirection: React.Dispatch<React.SetStateAction<DirectionLR>>;
 }) => {
   const t = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
   const { currentChannel, me } = useAppStore();
 
   const { value: hideRoomName } = useConfigValue("hideRoomName");
@@ -69,6 +67,7 @@ export const NavBar = ({
     setCurrentAlignment(mapping[alignDirection] ?? mapping.right);
   }, [alignDirection]);
 
+  const canDrag = !pin;
   const opacity = pin && location.pathname === "/channel" ? "opacity-0" : "opacity-100";
   const IconComponent = horizontalAlignments[currentAlignment]?.icon || ArrowLeftToLine;
 
@@ -100,32 +99,27 @@ export const NavBar = ({
   return (
     <div
       data-placement-navbar
-      className={`${opacity} ${anchored ? "shrink-0" : "cursor-move"} rounded-t-lg font-bold select-none bg-white dark:bg-zinc-900 pr-3 pl-3 p-2`}
+      className={cn(opacity, "shrink-0 rounded-t-lg font-bold select-none bg-white dark:bg-zinc-900 p-2 px-3")}
     >
-      <div data-tauri-drag-region={anchored ? undefined : true} className="flex justify-between">
-        <div className={cn("flex items-center", anchored && "min-w-0")}>
+      <div className="flex justify-between gap-2">
+        <div
+          className={cn("flex min-w-0 flex-1 items-center", canDrag && "cursor-move")}
+          onMouseDown={event => {
+            if (!canDrag || event.button !== 0) return;
+            event.preventDefault();
+            void getCurrentWindow().startDragging().catch(error => console.warn("Could not drag the overlay", error));
+          }}
+        >
           <img
             src={canary ? "/img/32x32-canary.png" : "/img/32x32.png"}
             alt="logo"
-            data-tauri-drag-region={anchored ? undefined : true}
-            className={cn("w-8 h-8 mr-2", anchored && "shrink-0")}
+            draggable={false}
+            className="mr-2 size-8 shrink-0"
           />
-
-          {channelName ? (
-            <div
-              data-tauri-drag-region={anchored ? undefined : true}
-              className={cn("hidden md:inline", anchored && "truncate")}
-            >
-              {channelName}
-            </div>
-          ) : (
-            <div data-tauri-drag-region={anchored ? undefined : true} className={anchored ? "truncate" : undefined}>
-              Overlayed
-            </div>
-          )}
+          <span className="truncate">{channelName ?? "UniversalOverlay"}</span>
         </div>
         {location.pathname !== "/settings" && (
-          <div className={cn("hidden gap-4 md:flex", anchored && "shrink-0")}>
+          <div className="hidden shrink-0 gap-4 md:flex">
             <button
               className="cursor-pointer"
               title={`${t("Alignment")}: ${t(horizontalAlignments[currentAlignment]?.name ?? "Left")}`}
@@ -142,16 +136,13 @@ export const NavBar = ({
                 }}
               />
             </button>
-            <div className="relative flex items-center">
+            <div className={cn("relative items-center", location.pathname === "/channel" ? "flex" : "hidden")}>
               <button className="cursor-pointer" title={t("Enable pin")}>
                 <Pin
                   size={20}
                   onClick={async () => {
                     await invoke("toggle_pin");
-                    await Config.set("pin", !pin);
-                    // track if it gets pinned
                     track(Metric.Pin, 1);
-                    navigate("/channel");
                   }}
                 />
               </button>

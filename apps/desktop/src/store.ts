@@ -32,6 +32,7 @@ export const createUserStateItem = (payload: VoiceStateUser) => {
 export interface AppState {
   visible: boolean;
   pin: boolean;
+  discordReady: boolean;
   me: OverlayedUser | null;
   currentChannel: CurrentChannel | null;
   channelSnapshotReady: boolean;
@@ -98,6 +99,7 @@ export const useAppStore = create<AppState & AppActions>()(
     me: null,
     discordErrors: new Set(),
     pin: false,
+    discordReady: false,
     currentChannel: null,
     channelSnapshotReady: false,
     markChannelSnapshotReady: () => set({ channelSnapshotReady: true }),

@@ -237,7 +237,7 @@ export const Account = () => {
                 </p>
               </div>
             ) : (
-              <p>{t("Please Login to use Overlayed")}</p>
+              <p>{t("Please Login to use UniversalOverlay")}</p>
             )}
 
             <div className="pb-4">
@@ -296,7 +296,7 @@ export const Account = () => {
                   <DialogHeader>
                     <DialogTitle className="mb-4 text-xl text-white">{t("Logout")}</DialogTitle>
                     <DialogDescription className="mb-4 text-xl text-white">
-                      {t("Are you sure you want to log out of Overlayed?")}
+                      {t("Are you sure you want to log out of UniversalOverlay?")}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -328,9 +328,9 @@ export const Account = () => {
                 }}
               >
                 <DialogHeader>
-                  <DialogTitle className="mb-4 text-xl text-white">{t("Quit Overlayed")}</DialogTitle>
+                  <DialogTitle className="mb-4 text-xl text-white">{t("Quit UniversalOverlay")}</DialogTitle>
                   <DialogDescription className="mb-4 text-xl text-white">
-                    {t("Are you sure you want to quit the Overlayed app?")}
+                    {t("Are you sure you want to quit the UniversalOverlay app?")}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

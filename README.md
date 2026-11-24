@@ -1,50 +1,20 @@
-# Overlayed
+# UniversalOverlay
 
-<p align="center">
-  <img src="https://github.com/overlayeddev/overlayed/assets/996134/b152c100-d06d-41d2-a795-32ea619fd1b5" height="128" />
-</p>
+UniversalOverlay is a desktop overlay for Discord voice chat. Keep the participant list and speaking indicators visible over another app, pin the overlay so clicks pass through it, and adjust its position, size, and opacity.
 
-<a href="https://discord.gg/eXmeNkVjye" target="_parent">
-<img alt="Discord" height=20 src="https://img.shields.io/discord/906349283358408704?style=&logo=discord&logoColor=white&label=%20&labelColor=5865F2&color=5865F2" />
-</a>
-<a href="https://twitter.com/OverlayedDev" target="_parent">
-<img alt="Twitter" height=20 src="https://img.shields.io/twitter/follow/overlayeddev.svg?style=&logo=twitter&logoColor=white&label=@OverlayedDev&labelColor=%231DA1F2&color=%231DA1F2" />
-</a>
-<a href="https://overlayed.dev/canary" target="_parent">
-<img alt="Canary Build" height=20 src="https://img.shields.io/github/actions/workflow/status/overlayeddev/overlayed/.github%2Fworkflows%2Fcanary.yaml?label=Canary Build" />
-</a>
+Voice History keeps the last 24 hours of observed joins, departures, and speaking activity on your device. Each entry has a timestamp, and speaking entries show how long the person spoke. Use the history filters to choose which activity to display. Optional desktop notifications show who joined or left and which voice channel they were in.
 
+UniversalOverlay is developed primarily for Windows. Other operating systems are untested.
 
-A modern, open-source, and free voice chat overlay for Discord that supports Mac, Linux, and Windows!
+## Run locally
 
-### Installation
+Install Rust, Node.js, and pnpm, then run these commands from the repository root.
 
-#### Windows - Winget
-
-```
-winget install OverlayedDev.Overlayed
+```sh
+pnpm install
+pnpm --filter desktop start
 ```
 
-#### MacOS - Homebrew
+Open the official Discord desktop client and authorize the overlay when prompted.
 
-```
-brew install overlayed
-```
-
-#### Linux - Flathub
-
-```
-flatpak install flathub dev.overlayed.Overlayed
-```
-
-#### Guides for all Platforms
-
-https://overlayed.dev/blog/installation-guide
-
-### Contributing
-
-If you want to help out please see [CONTRIBUTING.md](./CONTRIBUTING.md) to see how to get started.
-
-### Support
-
-If you enjoy this project consider giving it a star ⭐.
+UniversalOverlay is a fork of [Overlayed](https://github.com/overlayeddev/overlayed).

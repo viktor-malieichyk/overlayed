@@ -151,9 +151,4 @@ export interface VoiceStateUser {
   user: VoiceUser;
 }
 
-export interface JoinHistoryLogUser extends OverlayedUser {
-  event: "join" | "leave";
-  timestamp: number;
-}
-
 export type ChannelType = (typeof CHANNEL_TYPES)[keyof typeof CHANNEL_TYPES];

@@ -2812,36 +2812,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "overlayed"
-version = "0.7.0-beta"
-dependencies = [
- "anyhow",
- "cocoa 0.26.0",
- "log",
- "objc2-app-kit",
- "serde",
- "serde_json",
- "system-notification",
- "tauri",
- "tauri-build",
- "tauri-nspanel",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-http",
- "tauri-plugin-log",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tauri-plugin-websocket",
- "tauri-plugin-window-state",
- "tokio",
-]
-
-[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5230,6 +5200,37 @@ name = "unicode-segmentation"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4c87d22b6e3f4a18d4d40ef354e97c90fcb14dd91d7dc0aa9d8a1172ebf7202"
+
+[[package]]
+name = "universaloverlay"
+version = "0.7.0-beta.2"
+dependencies = [
+ "anyhow",
+ "cocoa 0.26.0",
+ "log",
+ "objc2-app-kit",
+ "serde",
+ "serde_json",
+ "system-notification",
+ "tauri",
+ "tauri-build",
+ "tauri-nspanel",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-http",
+ "tauri-plugin-log",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tauri-plugin-websocket",
+ "tauri-plugin-window-state",
+ "tauri-winrt-notification",
+ "tokio",
+]
 
 [[package]]
 name = "untrusted"

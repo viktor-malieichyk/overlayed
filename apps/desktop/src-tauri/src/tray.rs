@@ -62,10 +62,10 @@ pub fn set_tray_language(app: AppHandle, language: &str) -> Result<(), String> {
   let menu = menu.lock().map_err(|error| error.to_string())?.clone();
 
   for (id, english, translated) in [
-    (TRAY_SHOW_APP, "Show Overlayed", "Показати Overlayed"),
+    (TRAY_SHOW_APP, "Show UniversalOverlay", "Показати UniversalOverlay"),
     (TRAY_RELOAD, "Reload App", "Перезавантажити застосунок"),
     (TRAY_SETTINGS, "Settings", "Налаштування"),
-    (TRAY_JOIN_HISTORY, "Join History", "Історія входів"),
+    (TRAY_JOIN_HISTORY, "History", "Історія"),
     (TRAY_QUIT, "Quit", "Закрити"),
   ] {
     if let Some(item) = menu.get(id) {
@@ -95,9 +95,9 @@ pub fn set_tray_language(app: AppHandle, language: &str) -> Result<(), String> {
   if let Some(settings) = app.get_webview_window(SETTINGS_WINDOW_NAME) {
     settings
       .set_title(if ukrainian {
-        "Overlayed - Налаштування"
+        "UniversalOverlay - Налаштування"
       } else {
-        "Overlayed - Settings"
+        "UniversalOverlay - Settings"
       })
       .map_err(|error| error.to_string())?;
   }
@@ -114,13 +114,13 @@ impl Tray {
       .build(app_handle)?;
     MenuBuilder::new(app_handle)
       .text(TRAY_TOGGLE_PIN, "Pin")
-      .text(TRAY_SHOW_APP, "Show Overlayed")
+      .text(TRAY_SHOW_APP, "Show UniversalOverlay")
       .item(&speaking_only)
       .text(TRAY_RELOAD, "Reload App")
       .text(TRAY_SETTINGS, "Settings")
-      .text(TRAY_JOIN_HISTORY, "Join History")
+      .text(TRAY_JOIN_HISTORY, "History")
       .separator()
-      .text(OVERLAYED, format!("Overlayed v{version}"))
+      .text(OVERLAYED, format!("UniversalOverlay v{version}"))
       .text(TRAY_QUIT, "Quit")
       .build()
   }
@@ -178,7 +178,7 @@ impl Tray {
             if let Err(error) =
               settings_window.eval("window.location.hash = 'settings?tab=join-history';")
             {
-              log::warn!("Could not select Join History: {error}");
+              log::warn!("Could not select History: {error}");
             }
           }
           settings_window.show().unwrap();

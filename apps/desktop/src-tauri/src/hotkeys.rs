@@ -63,6 +63,7 @@ pub struct HotkeysState {
 #[derive(Default)]
 pub struct OverlayVisibility {
   hidden: AtomicBool,
+  connected: AtomicBool,
 }
 
 impl OverlayVisibility {
@@ -289,7 +290,7 @@ pub fn run_action(app: &AppHandle, command: HotkeyCommand) {
   }
 }
 
-fn update_pin(app: &AppHandle, value: Option<bool>) -> Result<(), String> {
+fn update_pin(app: &AppHandle, value: Option<bool>, connection: Option<bool>) -> Result<(), String> {
   let app_handle = app.clone();
   app
     .run_on_main_thread(move || {
@@ -300,27 +301,23 @@ fn update_pin(app: &AppHandle, value: Option<bool>) -> Result<(), String> {
       let pinned = app_handle.state::<Pinned>();
       let menu = app_handle.state::<TrayMenu>();
       let taskbar = app_handle.state::<Mutex<TaskbarHideMode>>();
-      match value {
-        Some(value) => commands::set_pin(window.clone(), pinned, menu, taskbar, value),
-        None => commands::toggle_pin(window.clone(), pinned, menu, taskbar),
+      let overlay = app_handle.state::<OverlayVisibility>();
+      if let Some(connected) = connection {
+        overlay.connected.store(connected, Ordering::Release);
+      } else if !overlay.connected.load(Ordering::Acquire) {
+        return;
       }
-      // Batch the existing pin path and hidden override on the UI thread, before
-      // another mouse event can be dispatched. Do not change the logical pin state.
-      if app_handle.state::<OverlayVisibility>().is_hidden() {
-        if let Err(error) = window.set_ignore_cursor_events(true) {
-          log::warn!("Could not keep the hidden overlay click-through: {error}");
-        }
-      }
+      let value = overlay.connected.load(Ordering::Acquire)
+        && value.unwrap_or_else(|| !commands::get_pin(app_handle.state::<Pinned>()));
+      commands::set_pin(window, pinned, menu, taskbar, value, connection.is_none());
     })
     .map_err(|error| error.to_string())
 }
 
 pub fn toggle_overlay_pin(app: &AppHandle) -> Result<(), String> {
-  update_pin(app, None)
+  update_pin(app, None, None)
 }
 
-// Keep the existing IPC names/callers, but make every pin entrypoint respect
-// temporary visibility without changing commands.rs or persisting a fake pin.
 #[tauri::command]
 pub fn guarded_toggle_pin(app: AppHandle) -> Result<(), String> {
   toggle_overlay_pin(&app)
@@ -328,7 +325,16 @@ pub fn guarded_toggle_pin(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn guarded_set_pin(app: AppHandle, value: bool) -> Result<(), String> {
-  update_pin(&app, Some(value))
+  update_pin(&app, Some(value), None)
+}
+
+#[tauri::command]
+pub fn set_overlay_connection(window: tauri::WebviewWindow, connected: bool, preferred_pin: bool) -> Result<(), String> {
+  if window.label() != MAIN_WINDOW_NAME {
+    return Err("Only the main overlay can update Discord connection state".into());
+  }
+  // A disconnect changes effective input handling without saving a new preference.
+  update_pin(window.app_handle(), Some(preferred_pin), Some(connected))
 }
 
 // Tauri exports command macros at crate root, so guards need distinct Rust
@@ -342,6 +348,40 @@ fn ignore_cursor_events(visible: bool, pinned: bool) -> bool {
   !visible || pinned
 }
 
+pub(crate) fn set_cursor_passthrough(window: &tauri::WebviewWindow, ignore: bool) -> Result<(), String> {
+  window
+    .set_ignore_cursor_events(ignore)
+    .map_err(|error| error.to_string())?;
+
+  #[cfg(windows)]
+  if !ignore {
+    // Tao skips writing extended styles while minimized. Its cached flags can
+    // already say that the window accepts clicks when the HWND still passes them through.
+    #[link(name = "user32")]
+    extern "system" {
+      fn GetWindowLongW(hwnd: *mut std::ffi::c_void, index: i32) -> i32;
+      fn SetWindowLongW(hwnd: *mut std::ffi::c_void, index: i32, value: i32) -> i32;
+    }
+    const GWL_EXSTYLE: i32 = -20;
+    const WS_EX_TRANSPARENT: i32 = 0x20;
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?.0;
+    // SAFETY: This runs on the UI thread with the live overlay HWND.
+    unsafe {
+      let style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+      if style & WS_EX_TRANSPARENT != 0 {
+        SetWindowLongW(hwnd, GWL_EXSTYLE, style & !WS_EX_TRANSPARENT);
+        if GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TRANSPARENT != 0 {
+          return Err(format!(
+            "Could not clear the Windows click-through style: {}",
+            std::io::Error::last_os_error()
+          ));
+        }
+      }
+    }
+  }
+  Ok(())
+}
+
 #[tauri::command]
 pub async fn set_overlay_visible(app: AppHandle, visible: bool) -> Result<(), String> {
   let (send, receive) = tokio::sync::oneshot::channel();
@@ -353,9 +393,7 @@ pub async fn set_overlay_visible(app: AppHandle, visible: bool) -> Result<(), St
           .get_webview_window(MAIN_WINDOW_NAME)
           .ok_or_else(|| "The overlay window is unavailable".to_string())?;
         let pinned = commands::get_pin(app_handle.state::<Pinned>());
-        window
-          .set_ignore_cursor_events(ignore_cursor_events(visible, pinned))
-          .map_err(|error| error.to_string())?;
+        set_cursor_passthrough(&window, ignore_cursor_events(visible, pinned))?;
         app_handle
           .state::<OverlayVisibility>()
           .hidden

@@ -39,7 +39,7 @@ export const ErrorView = ({ anchored }: { anchored: boolean }) => {
             await exit();
           }}
         >
-          {t("Quit Overlayed")}
+          {t("Quit UniversalOverlay")}
         </Button>
       </div>
     </div>

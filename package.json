@@ -1,5 +1,5 @@
 {
-  "name": "overlayed-root",
+  "name": "universaloverlay-root",
   "private": true,
   "scripts": {
     "start": "turbo start",

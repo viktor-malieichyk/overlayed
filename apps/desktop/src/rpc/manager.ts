@@ -11,11 +11,12 @@ import { useNavigate, type NavigateFunction, useLocation } from "react-router-do
 import { useEffect, useRef } from "react";
 import { RPCErrors } from "./errors";
 import { Metric, track, trackEvent } from "@/metrics";
-import { emit } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { Event } from "@/constants";
 import type { CurrentChannel, VoiceStateUser, VoiceUser } from "@/types";
 import { getVersion } from "@tauri-apps/api/app";
 import { hash } from "@/utils/crypto";
+import { HISTORY_KEY, VoiceHistory } from "@/voice-history";
 
 interface TokenResponse {
   access_token: string;
@@ -143,14 +144,14 @@ class SocketManager {
     const generation = this.generation;
     this.version = await getVersion();
     if (!this.isCurrent(generation)) return;
-    await this.connect(true);
+    await this.connect();
   }
 
   private isCurrent(generation: number) {
     return !this.stopped && generation === this.generation;
   }
 
-  private async connect(initial = false) {
+  private async connect() {
     if (this.stopped || this.connecting || this.socket) return;
     this.connecting = true;
     this.reauthRequested = false;
@@ -176,17 +177,15 @@ class SocketManager {
           if (this.isCurrent(generation)) console.warn("Could not handle Discord RPC message", error);
         });
       });
-    } catch (e) {
+    } catch {
       if (!this.isCurrent(generation)) return;
       this.connectionLost("Connection attempt failed", generation);
-      if (initial) {
-        this.navigate("/error");
-      }
     }
   }
 
   private onStorage = (e: StorageEvent) => {
     if (e.key === "discord_access_token" && !e.newValue) {
+      this.history.finishSpeakers();
       this.authenticated = false;
       this.stopResync();
       this.store.setMe(null);
@@ -196,16 +195,25 @@ class SocketManager {
     }
 
     if (e.key === "user_data" && !e.newValue) {
+      this.history.finishSpeakers();
       this.store.setMe(null);
       this.store.setCurrentChannel(null);
       this.store.clearUsers();
     }
   };
 
-  private onRetryAuth = (event: globalThis.Event) => {
-    if (!this.isConnected || this.authenticated) return;
-    event.preventDefault();
-    this.authenticate();
+  private onRetryAuth = () => {
+    if (this.authenticated) return;
+    if (this.store.discordReady) {
+      this.authenticate();
+      return;
+    }
+    if (this.connecting || this.isConnected) return;
+    const now = Date.now();
+    if (this.acceptedConnections.filter(time => now - time < 60000).length >= 2) return;
+    if (this.reconnectTimer !== null) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    void this.connect();
   };
 
   private stopResync() {
@@ -217,6 +225,7 @@ class SocketManager {
   }
 
   private closeSocket() {
+    this.history.finishSpeakers();
     ++this.generation;
     this.isConnected = this.connecting = this.authenticated = false;
     this.removeListener?.();
@@ -229,6 +238,7 @@ class SocketManager {
     this.currentChannelId = null;
     this.store.clearUsers();
     this.store.setCurrentChannel(null);
+    appStore.setState({ discordReady: false });
     // The plugin can retain a writer after a read error. Release it best effort
     // without waiting for a dead connection or letting its rejection escape.
     void socket?.disconnect().catch(() => {});
@@ -237,7 +247,9 @@ class SocketManager {
   private connectionLost(reason: string, generation: number) {
     if (!this.isCurrent(generation)) return;
     console.warn(`Discord RPC disconnected: ${reason}`);
+    const wasAuthenticated = this.authenticated;
     this.closeSocket();
+    if (wasAuthenticated) this.navigate("/");
     this.scheduleReconnect();
   }
 
@@ -264,6 +276,8 @@ class SocketManager {
     window.removeEventListener("storage", this.onStorage);
     window.removeEventListener(RETRY_AUTH_EVENT, this.onRetryAuth);
   }
+
+  readonly history = new VoiceHistory();
 
   private scheduleResync() {
     if (!this.authenticated || !this.isConnected || this.resyncTimer !== null) return;
@@ -296,15 +310,18 @@ class SocketManager {
   private reconcileChannel(channel: SelectedVoiceChannel | null) {
     const channelId = channel?.id ?? null;
     if (channelId !== this.currentChannelId) {
+      this.history.finishSpeakers();
       if (this.currentChannelId) this.channelEvents(RPCCommand.UNSUBSCRIBE, this.currentChannelId);
       this.store.clearUsers();
       this.store.setCurrentChannel(null);
       if (channel) {
-        this.channelEvents(RPCCommand.SUBSCRIBE, channel.id);
         this.store.setUsers(channel.voice_states);
         this.store.setCurrentChannel(channel);
+        this.channelEvents(RPCCommand.SUBSCRIBE, channel.id);
       }
     } else if (channel) {
+      const memberIds = new Set(channel.voice_states.map(user => user.user.id));
+      this.history.finishSpeakers(id => !memberIds.has(id));
       // Apply the snapshot atomically. Existing speakers retain their flags;
       // newcomers start silent and users absent from the reply are removed.
       appStore.setState(state => ({
@@ -414,6 +431,7 @@ class SocketManager {
 
     // either the token is good and valid and we can login otherwise prompt them approve
     if (payload.evt === RPCEvent.READY) {
+      appStore.setState({ discordReady: true });
       const accessToken = this.userdataStore.accessToken?.trim();
 
       if (accessToken && accessToken !== "undefined" && accessToken !== "null") {
@@ -425,34 +443,23 @@ class SocketManager {
     }
 
     if (payload.evt === RPCEvent.VOICE_STATE_DELETE) {
-      // if its my user clear the channel
-      if (payload.data.user.id === this.store.me?.id) {
-        this.store.clearUsers();
-
-        // we left the channel so we need to unsub for events
-        if (this.store.currentChannel) {
-          this.channelEvents(RPCCommand.UNSUBSCRIBE, this.store.currentChannel.id);
-        }
-      }
-
-      this.store.removeUser(payload.data.user.id);
-
-      // inform settings window for events other than me
-      if (this.store.me?.id !== payload.data.user.id) {
-        await emit(Event.UserLogUpdate, {
-          ...createUserStateItem(payload.data),
-          event: "leave",
-          timestamp: Date.now(),
-        });
+      const id = payload.data.user.id;
+      if (id === this.store.me?.id) {
+        this.reconcileChannel(null);
+      } else {
+        const user = this.store.users[id] ?? createUserStateItem(payload.data);
+        const channel = this.store.currentChannel;
+        this.history.stopSpeaking(id);
+        this.store.removeUser(id);
+        if (channel) this.history.record(user, channel, "leave");
       }
     }
 
     if (payload.evt === RPCEvent.VOICE_STATE_CREATE) {
       this.store.addUser(payload.data);
-
-      // inform settings window for events other than me
-      if (this.store.me?.id !== payload.data.user.id) {
-        await emit(Event.UserLogUpdate, { ...createUserStateItem(payload.data), event: "join", timestamp: Date.now() });
+      const channel = this.store.currentChannel;
+      if (channel && this.store.me?.id !== payload.data.user.id) {
+        this.history.record(createUserStateItem(payload.data), channel, "join");
       }
     }
 
@@ -467,22 +474,11 @@ class SocketManager {
 
     // VOICE_CHANNEL_SELECT	sent when the client joins a voice channel
     if (payload.evt === RPCEvent.VOICE_CHANNEL_SELECT) {
-      if (payload.data.channel_id === null) {
-        this.store.clearUsers();
-
-        if (this.store.currentChannel) {
-          this.channelEvents(RPCCommand.UNSUBSCRIBE, this.store.currentChannel.id);
-        }
-
-        // after unsub we clear the channel
-        this.store.setCurrentChannel(null);
-      }
+      if (payload.data.channel_id !== this.currentChannelId) this.reconcileChannel(null);
 
       // try to find the user
       this.requestUserChannel();
 
-      // TODO: is this needed cause it's just the id for some reason
-      this.store.setCurrentChannel(payload.data.channel_id);
       if (payload.data?.channel_id) {
         this.send({
           cmd: RPCCommand.GET_CHANNEL,
@@ -525,22 +521,15 @@ class SocketManager {
     }
 
     // GET_SELECTED_VOICE_CHANNEL	used to get the current voice channel the client is in
-    if (payload.cmd === RPCCommand.GET_SELECTED_VOICE_CHANNEL) {
-      if (payload.data?.id) {
-        // sub to channel events
-        this.channelEvents(RPCCommand.SUBSCRIBE, payload.data.id);
-        // set all the user in the channel
-        this.store.setUsers(payload.data.voice_states);
-
-        // set the current channel
-        this.store.setCurrentChannel(payload.data);
-      }
-      if (payload.evt !== RPCEvent.ERROR) this.store.markChannelSnapshotReady();
+    if (payload.cmd === RPCCommand.GET_SELECTED_VOICE_CHANNEL && payload.evt !== RPCEvent.ERROR) {
+      this.reconcileChannel(payload.data?.id ? payload.data : null);
+      this.store.markChannelSnapshotReady();
     }
 
     // console.log(payload);
     // we are ready to do things cause we are fully authed
     if (payload.cmd === RPCCommand.AUTHENTICATE && payload.evt === RPCEvent.ERROR) {
+      this.history.finishSpeakers();
       this.authenticated = false;
       this.stopResync();
       // These are recoverable auth issues (e.g. expired/revoked token),
@@ -614,8 +603,16 @@ class SocketManager {
     }
 
     if (payload.evt === RPCEvent.SPEAKING_START || payload.evt === RPCEvent.SPEAKING_STOP) {
-      const isSpeaking = payload.evt !== RPCEvent.SPEAKING_START;
-      if (this.store.users[payload.data.user_id]) this.store.setTalking(payload.data.user_id, !isSpeaking);
+      const id = payload.data.user_id;
+      const user = this.store.users[id];
+      const channel = this.store.currentChannel;
+      const isSpeaking = payload.evt === RPCEvent.SPEAKING_START;
+      if (user) this.store.setTalking(id, isSpeaking);
+      if (isSpeaking && user && channel) {
+        this.history.record(user, channel, "speaking");
+      } else if (!isSpeaking) {
+        this.history.stopSpeaking(id);
+      }
     }
 
     // when we move channels we get a new list of users
@@ -697,9 +694,17 @@ export const useSocket = () => {
     console.log("Initializing websocket...");
     const socketManager = new SocketManager();
     socketManager.init(navigate);
+    const finishHistory = () => socketManager.history.finishSpeakers();
+    window.addEventListener("pagehide", finishHistory);
+    socketManager.history.checkpoint();
+    const checkpoint = window.setInterval(() => socketManager.history.checkpoint(), 5000);
+    const clearHistory = listen(Event.ClearVoiceHistory, () => localStorage.removeItem(HISTORY_KEY));
 
     socketRef.current = socketManager;
     return () => {
+      window.removeEventListener("pagehide", finishHistory);
+      window.clearInterval(checkpoint);
+      void clearHistory.then(unlisten => unlisten());
       socketManager.disconnect();
       socketRef.current = null;
     };

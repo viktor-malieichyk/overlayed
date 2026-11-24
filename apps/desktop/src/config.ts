@@ -3,6 +3,7 @@ import { BaseDirectory } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import type { PlacementMonitors } from "@/hooks/use-placement";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import * as Sentry from "@sentry/react";
 
 export type DirectionLR = "left" | "right" | "center";
@@ -39,6 +40,8 @@ export interface OverlayedConfig {
   vertical: DirectionTB;
   telemetry: boolean;
   joinHistoryNotifications: boolean;
+  showHistoryJoinsAndLeaves: boolean;
+  showHistoryVoiceActivity: boolean;
   showOnlyTalkingUsers: boolean;
   showOwnUser: boolean;
   opacity: number;
@@ -65,13 +68,15 @@ export const DEFAULT_OVERLAYED_CONFIG: OverlayedConfig = {
   vertical: "bottom",
   telemetry: true,
   joinHistoryNotifications: true,
+  showHistoryJoinsAndLeaves: true,
+  showHistoryVoiceActivity: false,
   showOnlyTalkingUsers: false,
   showOwnUser: true,
   opacity: 100,
   opacityTarget: "entire-overlay",
   maxUsernameLength: 40,
   userScale: 100,
-  taskbarHideMode: "never",
+  taskbarHideMode: "always",
   placementMode: "anchored",
   placementMonitor: null,
   placementAnchor: "top-left",
@@ -93,7 +98,7 @@ export class Config {
   private writes = Promise.resolve();
 
   constructor() {
-    this.loaded = this.readConfig(DEFAULT_OVERLAYED_CONFIG).then(value => {
+    this.loaded = this.readConfig(DEFAULT_OVERLAYED_CONFIG, true).then(value => {
       this.config = value;
       if (!value.telemetry) void Sentry.close();
     });
@@ -103,15 +108,24 @@ export class Config {
     });
   }
 
-  private async readConfig(fallback: OverlayedConfig): Promise<OverlayedConfig> {
+  private async readConfig(fallback: OverlayedConfig, initializeLanguage = false): Promise<OverlayedConfig> {
     try {
-      const raw = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig });
+      const raw = await readTextFile(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig }).catch(() => null);
       const saved: Partial<OverlayedConfig> & {
         hideTaskbarWhenPinned?: boolean;
+        showHistoryJoins?: boolean;
+        showHistoryLeaves?: boolean;
         placementOffsetX?: number;
         placementOffsetY?: number;
-      } = JSON.parse(raw);
-      const { hideTaskbarWhenPinned, placementOffsetX, placementOffsetY, ...config } = saved;
+      } = raw === null ? {} : JSON.parse(raw);
+      const {
+        hideTaskbarWhenPinned,
+        placementOffsetX,
+        placementOffsetY,
+        showHistoryJoins,
+        showHistoryLeaves,
+        ...config
+      } = saved;
       if (
         (config.placementMarginX === undefined && placementOffsetX !== undefined) ||
         (config.placementMarginY === undefined && placementOffsetY !== undefined)
@@ -129,13 +143,30 @@ export class Config {
         if (config.placementMarginY === undefined && placementOffsetY !== undefined)
           config.placementMarginY = percent(placementOffsetY, monitor?.height || 1080);
       }
-      return {
+      const value: OverlayedConfig = {
         ...DEFAULT_OVERLAYED_CONFIG,
         ...config,
         // Preserve manually positioned overlays from before fixed placement was added.
-        placementMode: config.placementMode ?? "manual",
-        taskbarHideMode: config.taskbarHideMode ?? (hideTaskbarWhenPinned ? "pinned" : "never"),
+        placementMode: config.placementMode ?? (raw === null ? fallback.placementMode : "manual"),
+        showHistoryJoinsAndLeaves:
+          config.showHistoryJoinsAndLeaves ?? (showHistoryJoins !== false || showHistoryLeaves !== false),
+        taskbarHideMode:
+          config.taskbarHideMode ??
+          (hideTaskbarWhenPinned === undefined
+            ? DEFAULT_OVERLAYED_CONFIG.taskbarHideMode
+            : hideTaskbarWhenPinned
+              ? "pinned"
+              : "never"),
       };
+      if (initializeLanguage && config.language !== "en" && config.language !== "uk") {
+        value.language = await invoke<OverlayedConfig["language"]>("get_initial_language").catch(() => "en" as const);
+        if (getCurrentWebviewWindow().label === "main") {
+          await writeTextFile(CONFIG_FILE_NAME, JSON.stringify(value, null, 2), {
+            baseDir: BaseDirectory.AppConfig,
+          }).catch(error => console.warn("Could not save the initial app language", error));
+        }
+      }
+      return raw === null && !initializeLanguage ? fallback : value;
     } catch {
       return fallback;
     }

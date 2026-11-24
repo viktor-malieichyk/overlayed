@@ -10,6 +10,7 @@ mod constants;
 mod hotkeys;
 mod placement;
 mod tray;
+mod voice_notification;
 mod window_custom;
 
 use crate::commands::*;
@@ -42,9 +43,9 @@ pub struct Pinned(AtomicBool);
 #[derive(Clone, Copy, Default, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskbarHideMode {
-  #[default]
   Never,
   Pinned,
+  #[default]
   Always,
 }
 
@@ -90,7 +91,7 @@ fn main() {
 
   let log_plugin_builder = tauri_plugin_log::Builder::new()
     .targets([Target::new(TargetKind::LogDir { file_name: None })])
-    .level_for("overlayed", log_level_filter)
+    .level_for("universaloverlay", log_level_filter)
     .level_for("reqwest", log_level_filter)
     .level_for("notify", log::LevelFilter::Off)
     .level_for("tokio_tungstenite", log::LevelFilter::Off)
@@ -157,10 +158,10 @@ fn main() {
 
       // set the document title for the main window
       // TODO: we could just get the tauri window title in js as an alternative?
-      window.set_document_title("Overlayed - Main");
+      window.set_document_title("UniversalOverlay - Main");
 
       // set the document title for the settings window
-      settings.set_document_title("Overlayed - Settings");
+      settings.set_document_title("UniversalOverlay - Settings");
 
       // setting this seems to fix windows somehow
       // NOTE: this might be a bug?
@@ -180,9 +181,6 @@ fn main() {
 
       // update the system tray
       Tray::update_tray(app.app_handle())?;
-      if let Err(error) = hotkeys::set_pin(app.app_handle().clone(), true) {
-        log::warn!("Could not start the overlay pinned: {error}");
-      }
 
       // NOTE: always force settings window to be a certain size
       settings.set_size(LogicalSize {
@@ -193,6 +191,8 @@ fn main() {
       Ok(())
     })
     .invoke_handler(generate_handler![
+      voice_notification::show_voice_notification,
+      get_initial_language,
       hotkeys::toggle_pin,
       get_pin,
       hotkeys::set_pin,
@@ -213,6 +213,7 @@ fn main() {
       hotkeys::suspend_hotkeys,
       hotkeys::record_hotkey,
       hotkeys::set_overlay_visible,
+      hotkeys::set_overlay_connection,
     ]);
 
   app

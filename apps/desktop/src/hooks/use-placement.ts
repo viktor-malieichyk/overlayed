@@ -74,10 +74,6 @@ export const usePlacement = (pin: boolean, pathname: string) => {
   // Release is idempotent; allowed blocks queued work after leaving placement.
   const released = useRef(false);
   const lastRequest = useRef<PlacementRequest | null>(null);
-  const currentPin = useRef(pin);
-  currentPin.current = pin;
-  const lockActivation = useRef(0);
-  const pendingLock = useRef<number | null>(null);
   const previousMode = useRef<OverlayedConfig["placementMode"] | null>(null);
   const pendingUnlock = useRef(false);
 
@@ -171,23 +167,14 @@ export const usePlacement = (pin: boolean, pathname: string) => {
 
   const mode = config?.placementMode;
   const configKey = config ? configKeyFor(config) : "";
-  const anchored = mainWindow && mode === "anchored" && supported !== false && failedConfig !== configKey;
+  const anchored = mainWindow && pin && mode === "anchored" && supported !== false && failedConfig !== configKey;
   const channelPlacement = anchored && pathname === "/channel";
-  const displayOnly = channelPlacement && pin;
+  const displayOnly = channelPlacement;
 
   useLayoutEffect(() => {
     allowed.current = anchored && supported === true;
     currentConfigKey.current = configKey;
   }, [anchored, supported, configKey]);
-
-  useLayoutEffect(() => {
-    const activation = ++lockActivation.current;
-    pendingLock.current = channelPlacement && supported === true ? activation : null;
-    return () => {
-      pendingLock.current = null;
-      lockActivation.current++;
-    };
-  }, [channelPlacement, supported]);
 
   const release = async () => {
     if (released.current) return;
@@ -225,7 +212,6 @@ export const usePlacement = (pin: boolean, pathname: string) => {
           const previous = lastRequest.current;
           if (
             previous &&
-            pendingLock.current === null &&
             previous.monitor === request.monitor &&
             previous.anchor === request.anchor &&
             previous.offsetX === request.offsetX &&
@@ -236,28 +222,16 @@ export const usePlacement = (pin: boolean, pathname: string) => {
             continue;
           }
           const requestConfigKey = currentConfigKey.current;
-          const requestActivation = lockActivation.current;
           try {
             await invoke("apply_placement", { ...request });
             released.current = false;
             lastRequest.current = request;
-            if (mounted.current && allowed.current && pendingLock.current === requestActivation) {
-              pendingLock.current = null;
-              if (!currentPin.current) {
-                try {
-                  await invoke("set_pin", { value: true });
-                } catch (error) {
-                  console.warn("Could not pin the fixed overlay", error);
-                }
-              }
-            }
           } catch (error) {
             console.warn("Could not apply overlay placement; keeping manual controls", error);
             released.current = false;
             if (mounted.current && requestConfigKey === currentConfigKey.current) {
               allowed.current = false;
               pending.current = null;
-              pendingLock.current = null;
               setFailedConfig(requestConfigKey);
             }
             try {

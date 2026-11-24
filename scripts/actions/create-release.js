@@ -16,7 +16,7 @@ export const script = async ({ context, github }) => {
     owner: context.repo.owner,
     repo: context.repo.repo,
     tag_name: `v${process.env.PACKAGE_VERSION}`,
-    name: `Overlayed v${process.env.PACKAGE_VERSION}`,
+    name: `UniversalOverlay v${process.env.PACKAGE_VERSION}`,
     body: "release notes here",
     draft: true,
     prerelease: false,

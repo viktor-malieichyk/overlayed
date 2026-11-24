@@ -9,7 +9,7 @@ const config = JSON.parse(
   await readFile(new URL("../apps/desktop/src-tauri/tauri.conf.json", import.meta.url), "utf8")
 );
 const filename = basename(installerPath);
-if (filename !== `Overlayed_${config.version}_x64-setup.exe`) {
+if (filename !== `${config.productName}_${config.version}_x64-setup.exe`) {
   throw new Error(`The installer name must match version ${config.version} in the Tauri configuration.`);
 }
 

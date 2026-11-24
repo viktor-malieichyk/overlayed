@@ -181,7 +181,7 @@ export const Placement = () => {
       {fixed && (
         <p className="text-xs text-zinc-400 mx-2">
           {t(
-            "Fixed overlays are click-through. To change settings, start Overlayed again or use its tray icon (Settings or Unpin)."
+            "Fixed overlays are click-through. To change settings, start UniversalOverlay again or use its tray icon (Settings or Unpin)."
           )}
         </p>
       )}
@@ -311,7 +311,7 @@ export const Placement = () => {
         </div>
       ))}
       <p className="mx-2 text-xs text-zinc-400">
-        {t("Overlayed starts pinned. Use Unpin in the tray to move or interact with it.")}
+        {t("UniversalOverlay starts pinned. Use Unpin in the tray to move or interact with it.")}
       </p>
     </div>
   );

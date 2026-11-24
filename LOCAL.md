@@ -1,7 +1,7 @@
 # Local Setup
 
 To contribute you will first need to fork the repo and make some adjustments to
-get it up and running on your local machine. Below are the steps to follow for you to get Overlayed to run on your local machine.
+get it up and running on your local machine. Below are the steps to follow for you to get UniversalOverlay to run on your local machine.
 
 # Prerequisites
 

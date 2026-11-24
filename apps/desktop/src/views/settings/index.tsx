@@ -37,7 +37,7 @@ export const SettingsView = () => {
           <TabsTrigger value="configuration">{t("Configuration")}</TabsTrigger>
           <TabsTrigger value="placement">{t("Position")}</TabsTrigger>
           <TabsTrigger value="hotkeys">{t("Hotkeys")}</TabsTrigger>
-          <TabsTrigger value="join-history">{t("Join History")}</TabsTrigger>
+          <TabsTrigger value="join-history">{t("History")}</TabsTrigger>
         </TabsList>
         {canary && (
           <div className="h-[32px] shrink-0 bg-yellow-400 font-semibold text-black flex items-center justify-center">
@@ -83,10 +83,8 @@ export const SettingsView = () => {
           <TabsContent tabIndex={-1} value="hotkeys">
             <Hotkeys />
           </TabsContent>
-          <TabsContent tabIndex={-1} forceMount value="join-history">
-            <div style={{ display: currentTab === "join-history" ? "block" : "none" }}>
-              <JoinHistory />
-            </div>
+          <TabsContent tabIndex={-1} value="join-history" className="h-full">
+            <JoinHistory />
           </TabsContent>
         </div>
         <div className="flex min-h-10 w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-800 px-4 py-2 text-xs">

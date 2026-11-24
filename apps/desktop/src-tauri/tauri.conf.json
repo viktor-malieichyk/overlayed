@@ -23,15 +23,15 @@
       }
     }
   },
-  "productName": "Overlayed",
-  "version": "0.7.0-beta",
+  "productName": "UniversalOverlay",
+  "version": "0.7.0-beta.2",
   "identifier": "com.overlayed.dev",
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQUJGNzNEMDYzNEZCMzYKUldRMit6UUdQZmVyN0lGZ3dXWStmNFFrYStEckZqM1ZDWUtmZ1huZXA5TzFGa1gzMTZuM2xrSHEK",
       "endpoints": [
         "https://github.com/viktor-malieichyk/overlayed/releases/latest/download/latest.json",
-        "https://github.com/viktor-malieichyk/overlayed/releases/download/v0.7.0-beta/latest.json"
+        "https://github.com/viktor-malieichyk/overlayed/releases/download/v0.7.0-beta.2/latest.json"
       ]
     }
   },
@@ -45,7 +45,8 @@
         "decorations": false,
         "shadow": false,
         "label": "main",
-        "title": "Overlayed - Main",
+        "skipTaskbar": true,
+        "title": "UniversalOverlay - Main",
         "width": 420,
         "height": 600,
         "minHeight": 106,
@@ -58,7 +59,7 @@
         "visible": false,
         "label": "settings",
         "url": "#settings",
-        "title": "Overlayed - Settings",
+        "title": "UniversalOverlay - Settings",
         "width": 680,
         "height": 640
       }

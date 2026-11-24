@@ -1,147 +1,121 @@
-import { translate, useTranslation } from "@/i18n";
+﻿import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { Trash, PhoneOff, PhoneIncoming } from "lucide-react";
+import { Mic, PhoneIncoming, PhoneOff, Trash } from "lucide-react";
 import { cn } from "@/utils/tw";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
-import { emit, listen } from "@tauri-apps/api/event";
+import { emit } from "@tauri-apps/api/event";
 import { Event } from "@/constants";
 import { useToast } from "@/components/ui/use-toast";
-import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { Checkbox } from "@/components/ui/checkbox";
 import Config from "@/config";
-import type { JoinHistoryLogUser } from "@/types";
 import { useConfigValue } from "@/hooks/use-config-value";
+import { HISTORY_KEY, readVoiceHistory } from "@/voice-history";
 
-const MAX_LOG_LENGTH = 420;
-const PAGE_SIZE = 8;
+function formatDuration(milliseconds: number) {
+  const tenths = Math.floor(milliseconds / 100);
+  const minutes = Math.floor(tenths / 600);
+  const seconds = String(Math.floor(tenths / 10) % 60).padStart(2, "0");
+  return `${minutes}:${seconds}.${tenths % 10}`;
+}
+
+const options = [
+  { key: "showHistoryJoinsAndLeaves", label: "Show joins and leaves" },
+  { key: "showHistoryVoiceActivity", label: "Show voice activity" },
+  { key: "joinHistoryNotifications", label: "Enable join/leave notifications" },
+] as const;
 
 export const JoinHistory = () => {
   const t = useTranslation();
-  const [userLog, setUserLog] = useState<JoinHistoryLogUser[]>([]);
-  const [page, setPage] = useState(0);
-  const lastPage = Math.max(0, Math.ceil(userLog.length / PAGE_SIZE) - 1);
-  const currentPage = Math.min(page, lastPage);
-  const { value: joinHistoryNotifications } = useConfigValue("joinHistoryNotifications");
-
+  const { value: language } = useConfigValue("language");
+  const { value: showJoinsAndLeaves } = useConfigValue("showHistoryJoinsAndLeaves");
+  const { value: showVoiceActivity } = useConfigValue("showHistoryVoiceActivity");
+  const { value: notifications } = useConfigValue("joinHistoryNotifications");
+  const [userLog, setUserLog] = useState(readVoiceHistory);
   const { toast } = useToast();
+
   useEffect(() => {
-    let disposed = false;
-    let permission: Promise<boolean> | undefined;
-    const notify = async ({ event, username }: JoinHistoryLogUser) => {
-      if (!(await Config.get("joinHistoryNotifications")) || disposed) return;
-
-      permission ??= isPermissionGranted().then(async granted => granted || (await requestPermission()) === "granted");
-      if (!(await permission) || disposed || !(await Config.get("joinHistoryNotifications"))) return;
-
-      const language = await Config.get("language");
-      const action = translate(language, event === "leave" ? "left the voice channel" : "joined the voice channel");
-      if (!disposed) sendNotification({ title: translate(language, "Discord Voice"), body: `${username} ${action}` });
+    const refresh = () => setUserLog(readVoiceHistory());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === HISTORY_KEY || event.key === null) refresh();
     };
-
-    const unlisten = listen<JoinHistoryLogUser>(Event.UserLogUpdate, ({ payload }) => {
-      if (disposed) return;
-      setUserLog(previous => [...previous, payload].slice(-MAX_LOG_LENGTH));
-      void notify(payload).catch(error => {
-        permission = undefined;
-        console.warn("Could not send voice channel notification", error);
-      });
-    });
-
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 5000);
+    refresh();
     return () => {
-      disposed = true;
-      void unlisten.then(removeListener => removeListener());
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
     };
   }, []);
 
-  const resetUserLog = () => {
-    setUserLog([]);
-    setPage(0);
-  };
+  const filters = { join: showJoinsAndLeaves, leave: showJoinsAndLeaves, speaking: showVoiceActivity };
+  const values = [showJoinsAndLeaves, showVoiceActivity, notifications];
+  const visibleLog = userLog.filter(item => filters[item.event]).sort((a, b) => b.timestamp - a.timestamp);
+  const dateFormat = new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "medium" });
 
   return (
-    <div className="flex flex-col pb-4">
-      <p className="text-sm text-gray-400 mb-2">
-        {t("Display join/leave events in the voice chat useful for moderation purposes")}
-      </p>
-      <div className="flex flex-wrap items-center gap-3 pb-2">
-        <div className="flex items-center">
-          <Checkbox
-            id="notification"
-            checked={joinHistoryNotifications}
-            onCheckedChange={async () => {
-              await Config.set("joinHistoryNotifications", !joinHistoryNotifications);
-              await emit("config_update", await Config.getConfig());
-            }}
-          />
-          <label
-            htmlFor="notification"
-            className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            {t("Enable join/leave notifications")}
-          </label>
-        </div>
-        <div className="grow"></div>
-        <Button size="sm" onClick={resetUserLog} variant="ghost" className="hover:bg-red-500">
+    <div className="flex h-full min-h-0 flex-col">
+      <p className="mb-2 shrink-0 text-sm text-gray-400">{t("Voice channel activity from the last 24 hours")}</p>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 pb-2">
+        {options.map(({ key, label }, index) => (
+          <div key={key} className="flex items-center gap-2">
+            <Checkbox
+              id={key}
+              checked={values[index]}
+              onCheckedChange={async checked => {
+                await Config.set(key, checked === true);
+                await emit("config_update", await Config.getConfig());
+              }}
+            />
+            <label htmlFor={key} className="text-sm font-medium">
+              {t(label)}
+            </label>
+          </div>
+        ))}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto hover:bg-red-500"
+          onClick={async () => {
+            await emit(Event.ClearVoiceHistory);
+          }}
+        >
           <span className="mr-2">{t("Clear list")}</span>
           <Trash size={18} />
         </Button>
       </div>
-      <div className="space-y-1 pb-3">
-        {[...userLog]
-          .reverse()
-          .slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
-          .map((item, i) => {
-            const timeInSeconds = Math.floor(item.timestamp / 1000);
-            const userInfoString = `${item.username} (${item.event}) <@${item.id}> <t:${timeInSeconds}:R>`;
-            const Icon = item.event === "join" ? PhoneIncoming : PhoneOff;
-            const className = item.event === "join" ? "text-green-500" : "text-red-500";
-            return (
-              <Tooltip key={`user-${i}-${item.id}`} disableHoverableContent delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <div className="flex cursor-pointer items-center text-sm text-white">
-                    <Icon size={18} className={cn(className, "mr-2 shrink-0")} />{" "}
-                    <span
-                      className="break-all"
-                      onClick={() => {
-                        navigator.clipboard.writeText(userInfoString);
-                        toast({
-                          title: t("User Info Copied"),
-                          variant: "success",
-                          description: `${item.username} (${t(item.event)}) ${t("copied to clipboard")}`,
-                          duration: 3000,
-                        });
-                      }}
-                    >
-                      {item.username}
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent align="start">
-                  {item.username} ({t(item.event)})
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-      </div>
-      {lastPage > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button size="sm" variant="outline" disabled={currentPage <= 0} onClick={() => setPage(currentPage - 1)}>
-            {t("Previous page")}
-          </Button>
-          <span className="tabular-nums">
-            {currentPage + 1} / {lastPage + 1}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage >= lastPage}
-            onClick={() => setPage(currentPage + 1)}
-          >
-            {t("Next page")}
-          </Button>
-        </div>
-      )}
+      <ol aria-label={t("History")} className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-3">
+        {visibleLog.map(item => {
+          const date = new Date(item.timestamp);
+          const time = dateFormat.format(date);
+          const duration = item.event === "speaking" ? formatDuration(item.duration) : null;
+          const Icon = { join: PhoneIncoming, leave: PhoneOff, speaking: Mic }[item.event];
+          const color = { join: "text-green-500", leave: "text-red-500", speaking: "text-pink-400" }[item.event];
+          const details = [t(item.event), item.room ?? t("Private call"), duration].filter(Boolean).join(" · ");
+          return (
+            <li key={item.key} className="flex flex-wrap items-center gap-x-2 text-sm">
+              <Icon size={16} aria-hidden className={cn(color, "shrink-0")} />
+              <button
+                type="button"
+                className="break-all font-medium hover:underline"
+                onClick={async () => {
+                  const discordTime = `<t:${Math.floor(item.timestamp / 1000)}:F>`;
+                  await navigator.clipboard.writeText(`${item.username} (${details}) <@${item.id}> ${discordTime}`);
+                  toast({ title: t("User Info Copied"), variant: "success", duration: 3000 });
+                }}
+              >
+                {item.username}
+              </button>
+              <span className="break-all text-gray-300">{details}</span>
+              <time className="ml-auto whitespace-nowrap tabular-nums text-gray-400" dateTime={date.toISOString()}>
+                {time}
+              </time>
+            </li>
+          );
+        })}
+      </ol>
+      {visibleLog.length === 0 && <p className="text-sm text-gray-400">{t("No matching activity")}</p>}
     </div>
   );
 };

@@ -30,7 +30,7 @@ function App() {
 
   useEffect(() => {
     const styleForLog = "font-size: 20px; color: #00dffd";
-    console.log(`%cOverlayed ${window.location.hash} Window`, styleForLog);
+    console.log(`%cUniversalOverlay ${window.location.hash} Window`, styleForLog);
   }, []);
 
   useEffect(() => {
@@ -43,11 +43,12 @@ function App() {
 
   const { visible } = useAppStore();
 
-  const { pin } = usePin();
+  const location = useLocation();
+  const connected = useAppStore(state => state.me !== null) && location.pathname === "/channel";
+  const { pin } = usePin(connected);
   useHotkeys();
   const { horizontal, setHorizontalDirection } = useAlign();
   const visibleClass = visible ? "opacity-100" : "opacity-0";
-  const location = useLocation();
   const { anchored, channelPlacement, displayOnly, rootRef } = usePlacement(pin, location.pathname);
   const isSettingsWindow = location.pathname === "/settings";
 
@@ -56,7 +57,9 @@ function App() {
       ref={rootRef}
       className={cn(
         `text-white h-screen select-none rounded-lg flex flex-col ${visibleClass}`,
-        channelPlacement && "overflow-hidden bg-transparent",
+        channelPlacement && "overflow-hidden",
+        // A fully transparent Windows overlay pixel passes clicks through to the app underneath.
+        visible && !pin && !isSettingsWindow && "bg-black/5",
         // Only show the border on the overlay (main) window when not pinned.
         pin || isSettingsWindow ? null : "border border-zinc-600"
       )}
@@ -65,7 +68,6 @@ function App() {
         <>
           <NavBar
             pin={pin}
-            anchored={anchored}
             alignDirection={horizontal}
             setAlignDirection={setHorizontalDirection}
           />
