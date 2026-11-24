@@ -71,7 +71,7 @@ export const User = ({
     <div
       data-placement-row={anchored ? "" : undefined}
       className={cn(
-        "flex gap-2 py-1 p-2 justify-start items-center transition-opacity",
+        "flex items-center justify-start gap-2 px-2 py-1 transition-opacity",
         alignDirection == "right" ? "flex-row-reverse" : "flex-row",
         anchored ? "w-max shrink-0" : undefined,
         anchored && alignDirection === "center" ? "pb-2" : undefined
@@ -89,7 +89,7 @@ export const User = ({
             e.target.src = "/img/default.png";
           }}
           src={avatarUrl}
-          alt="avatar"
+          alt=""
           className="rounded-full w-8 h-8"
         />
 

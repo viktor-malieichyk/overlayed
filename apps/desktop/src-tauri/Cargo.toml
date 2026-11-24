@@ -1,6 +1,6 @@
 [package]
 name = "universaloverlay"
-version = "0.7.0-beta.2"
+version = "0.7.0-beta.3"
 description = "Voice chat overlay for Discord"
 authors = ["Team Overlayed"]
 license = "AGPL-3.0"

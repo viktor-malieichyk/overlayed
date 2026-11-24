@@ -13,7 +13,7 @@ export type TaskbarHideMode = "never" | "pinned" | "always";
 
 export type OpacityTarget = "all" | "username-box" | "entire-overlay";
 
-export type HotkeyCommand = "pin" | "toggle-visibility" | "next-monitor" | "open-settings" | "toggle-speaking-only";
+export type HotkeyCommand = "pin" | "toggle-visibility" | "next-monitor" | "open-settings" | "open-history" | "toggle-speaking-only";
 export interface HotkeyBinding {
   key: string;
   command: HotkeyCommand;

@@ -4,6 +4,11 @@
   "identifier": "com.overlayed.canary.dev",
   "bundle": {
     "active": true,
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/canary/icon.ico"
+      }
+    },
     "targets": ["appimage", "nsis", "dmg"],
     "icon": [
       "icons/canary/32x32.png",

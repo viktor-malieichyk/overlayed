@@ -2,16 +2,16 @@
 <component type="desktop-application">
   <id>dev.overlayed.Overlayed</id>
   <launchable type="desktop-id">dev.overlayed.Overlayed.desktop</launchable>
-  <name>Overlayed</name>
+  <name>UniversalOverlay</name>
   <developer id="dev.overlayed">
     <name>Team Overlayed</name>
   </developer>
   <summary>A Discord overlay</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
-  <url type="homepage">https://overlayed.dev</url>
-  <url type="bugtracker">https://github.com/overlayeddev/overlayed/issues</url>
-  <url type="vcs-browser">https://github.com/overlayeddev/overlayed</url>
+  <url type="homepage">https://github.com/viktor-malieichyk/overlayed</url>
+  <url type="bugtracker">https://github.com/viktor-malieichyk/overlayed/issues</url>
+  <url type="vcs-browser">https://github.com/viktor-malieichyk/overlayed</url>
   <url type="contribute">https://github.com/overlayeddev/overlayed?tab=contributing-ov-file#contributing</url>
   <description>
     <p>See who's speaking in your Discord voice channel with a movable overlay, compatible with almost every game or app.</p>
@@ -21,18 +21,12 @@
       <li>Transparent - Transparent window that can ignore mouse clicks</li>
       <li>Join History - See who enters and leaves a channel</li>
     </ul>
-    <p>Only the official Discord client is supported (no third party clients like Vesktop) since Overlayed requires Advanced RPC to function. See Issue #78 in our bug tracker for details.</p>
+    <p>Only the official Discord client is supported (no third party clients like Vesktop) since UniversalOverlay requires Advanced RPC to function.</p>
   </description>
   <categories>
     <category>Utility</category>
     <category>TelephonyTools</category>
   </categories>
-  <screenshots>
-    <screenshot type="default">
-      <caption>Overlayed Marketing Image showing the app used in Minecraft</caption>
-      <image>https://artifacts.overlayed.dev/media/overlayed.png</image>
-    </screenshot>
-  </screenshots>
   <releases>
     <release version="0.6.2" date="2024-09-21" type="stable">
       <url>https://github.com/overlayeddev/overlayed/releases/tag/v0.6.2</url>

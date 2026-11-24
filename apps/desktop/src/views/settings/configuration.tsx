@@ -20,11 +20,9 @@ export const Configuration = () => {
   const { value: placementMode } = useConfigValue("placementMode");
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between mt-2 h-8 mx-2">
-        <label htmlFor="hide-room-name" className="text-sm font-medium">
-          {t("Hide room name")}
-        </label>
+    <div className="settings-stack">
+      <div className="settings-row">
+        <label htmlFor="hide-room-name">{t("Hide channel name")}</label>
         <Switch
           id="hide-room-name"
           checked={hideRoomName}
@@ -34,13 +32,8 @@ export const Configuration = () => {
           }}
         />
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="notification"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Only show users who are speaking")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="notification">{t("Only show users who are speaking")}</label>
         <Switch
           id="notification"
           checked={showOnlyTalkingUsers}
@@ -52,13 +45,8 @@ export const Configuration = () => {
           }}
         />
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="maxUsernameLength"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Max username length")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="maxUsernameLength">{t("Maximum username length")}</label>
         <div className="flex items-center gap-4 w-1/2">
           <div className="flex-1">
             <Slider
@@ -79,15 +67,10 @@ export const Configuration = () => {
         </div>
       </div>
       {placementMode === "anchored" && (
-        <p className="text-xs text-zinc-400 mx-2">{t("Alignment follows the fixed position.")}</p>
+        <p className="settings-hint">{t("Alignment follows the fixed position.")}</p>
       )}
-      <div className={placementMode === "anchored" ? "hidden" : "flex items-center justify-between h-8 mx-2"}>
-        <label
-          htmlFor="horizontal"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Anchor horizontal")}
-        </label>
+      <div className={placementMode === "anchored" ? "hidden" : "settings-row"}>
+        <label htmlFor="horizontal">{t("Horizontal alignment")}</label>
         <select
           id="horizontal"
           value={horizontal}
@@ -97,7 +80,7 @@ export const Configuration = () => {
 
             await emit("config_update", await Config.getConfig());
           }}
-          className="w-40 p-1 rounded border bg-zinc-800 text-white outline-none focus:ring-0 cursor-pointer"
+          className="settings-select w-52"
         >
           <option value="left" className="bg-zinc-800 text-white">
             {t("Left")}
@@ -110,13 +93,8 @@ export const Configuration = () => {
           </option>
         </select>
       </div>
-      <div className={placementMode === "anchored" ? "hidden" : "flex items-center justify-between h-8 mx-2"}>
-        <label
-          htmlFor="vertical"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Anchor vertical")}
-        </label>
+      <div className={placementMode === "anchored" ? "hidden" : "settings-row"}>
+        <label htmlFor="vertical">{t("Vertical alignment")}</label>
         <select
           id="vertical"
           value={vertical}
@@ -126,7 +104,7 @@ export const Configuration = () => {
 
             await emit("config_update", await Config.getConfig());
           }}
-          className="w-40 p-1 rounded border bg-zinc-800 text-white outline-none focus:ring-0 cursor-pointer"
+          className="settings-select w-52"
         >
           <option value="top" className="bg-zinc-800 text-white">
             {t("Top")}
@@ -136,13 +114,8 @@ export const Configuration = () => {
           </option>
         </select>
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="opacityTarget"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Opacity target")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="opacityTarget">{t("Opacity target")}</label>
         <select
           id="opacityTarget"
           value={opacityTarget}
@@ -152,26 +125,21 @@ export const Configuration = () => {
 
             await emit("config_update", await Config.getConfig());
           }}
-          className="p-1 rounded border bg-zinc-800 text-white outline-none focus:ring-0 cursor-pointer"
+          className="settings-select w-52"
         >
           <option value="all" className="bg-zinc-800 text-white">
-            {t("Fade quiet users")}
+            {t("Dim users who aren’t speaking")}
           </option>
           <option value="entire-overlay" className="bg-zinc-800 text-white">
             {t("Entire voice overlay")}
           </option>
           <option value="username-box" className="bg-zinc-800 text-white">
-            {t("Username background only")}
+            {t("Username background")}
           </option>
         </select>
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="opacity"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Overlay opacity")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="opacity">{t("Overlay opacity")}</label>
         <div className="flex items-center gap-4 w-1/2">
           <div className="flex-1">
             <Slider
@@ -188,17 +156,12 @@ export const Configuration = () => {
             />
           </div>
           <div className="w-10 text-right">
-            <span className="text-sm">{opacity} %</span>
+            <span className="text-sm">{opacity}%</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="userScale"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Overlay size")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="userScale">{t("Overlay size")}</label>
         <div className="flex items-center gap-4 w-1/2">
           <div className="flex-1">
             <Slider
@@ -215,17 +178,12 @@ export const Configuration = () => {
             />
           </div>
           <div className="w-16 text-right">
-            <span className="text-sm">{userScale} %</span>
+            <span className="text-sm">{userScale}%</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between h-8 mx-2">
-        <label
-          htmlFor="hideTaskbar"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          {t("Hide window from the taskbar")}
-        </label>
+      <div className="settings-row">
+        <label htmlFor="hideTaskbar">{t("Hide window from the taskbar")}</label>
         <select
           id="hideTaskbar"
           value={taskbarHideMode}
@@ -235,7 +193,7 @@ export const Configuration = () => {
             await invoke("set_taskbar_hide_mode", { mode });
             await emit("config_update", await Config.getConfig());
           }}
-          className="w-40 p-1 rounded border bg-zinc-800 text-white outline-none focus:ring-0 cursor-pointer"
+          className="settings-select w-52"
         >
           <option value="never">{t("Never")}</option>
           <option value="pinned">{t("When pinned")}</option>

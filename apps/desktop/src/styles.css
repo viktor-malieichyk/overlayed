@@ -147,6 +147,15 @@
   }
 }
 
+.settings-panel { @apply h-full overflow-y-auto p-4; }
+.settings-history-panel { @apply overflow-hidden; }
+.settings-stack { @apply flex flex-col gap-2 text-sm; }
+.settings-row { @apply flex min-h-8 items-center justify-between gap-4 py-1 text-sm; }
+.settings-row > label { @apply font-medium; }
+.settings-select { @apply min-h-8 max-w-[55%] min-w-0 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-white; }
+.settings-card { @apply rounded-md border border-zinc-700 p-3; }
+.settings-hint { @apply text-sm text-zinc-400; }
+
 html.placement-display,
 html.placement-display body,
 html.placement-display #root {

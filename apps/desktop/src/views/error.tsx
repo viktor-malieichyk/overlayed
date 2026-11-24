@@ -11,28 +11,24 @@ export const ErrorView = ({ anchored }: { anchored: boolean }) => {
   const { discordErrors } = useAppStore();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center bg-zinc-900 p-4">
-      <div className="py-4 text-center text-xl font-bold">
-        <p>{t("Error Connecting to Discord")}</p>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto bg-zinc-900 p-4 text-center text-sm">
+      <h1 className="text-xl font-semibold">{t("Couldn't connect to Discord")}</h1>
       <div className="size-20 shrink-0">
-        <img src="/img/sad-face.svg" alt="sad" className="text-white fill-white w-full" />
+        <img src="/img/sad-face.svg" alt="" className="w-full" />
       </div>
       {discordErrors.size > 0 ? (
-        <div className="break-words py-4 text-center text-sm">
+        <div className="min-w-0 space-y-2 break-words">
           {Array.from(discordErrors.values()).map((item, i) => (
-            <p key={`error-${i}`}>{item}</p>
+            <p key={`error-${i}`}>{t(item)}</p>
           ))}
         </div>
       ) : (
-        <div>
-          <p className="py-4">{t("Please try restarting discord then try again")}</p>
-        </div>
+        <p>{t("Restart Discord and try again.")}</p>
       )}
-      <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
-        <Link to="/">
-          <Button>{t("Connect to Discord")}</Button>
-        </Link>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button asChild>
+          <Link to="/">{t("Connect to Discord")}</Link>
+        </Button>
         <Button
           variant="ghost"
           onClick={async () => {

@@ -69,4 +69,4 @@ pnpm --filter desktop exec tauri build --target x86_64-pc-windows-msvc --bundles
 node scripts/create-fork-update-manifest.mjs <path-to-x64-setup.exe>
 ```
 
-Attach the installer and the generated `latest.json` to the matching GitHub release, tagged `v<version>`. The manifest contains the installer signature and must be published with each release that is marked latest.
+Attach the installer and the generated `latest.json` to the matching GitHub release. Use the title `UniversalOverlay <version>`, tag it `v<version>`, and use the version from `tauri.conf.json` verbatim in both. For example, use `UniversalOverlay 0.7.0-beta.2` and `v0.7.0-beta.2`. Mark beta releases as prereleases. The manifest contains the installer signature and must be published with each release that is marked latest.

@@ -9,6 +9,8 @@
   "bundle": {
     "createUpdaterArtifacts": true,
     "active": true,
+    "publisher": "UniversalOverlay",
+    "homepage": "https://github.com/viktor-malieichyk/overlayed",
     "targets": "all",
     "icon": [
       "icons/stable/32x32.png",
@@ -18,20 +20,24 @@
       "icons/stable/icon.ico"
     ],
     "windows": {
+      "nsis": {
+        "installerIcon": "icons/stable/icon.ico",
+        "installerHooks": "windows/publisher-migration.nsh"
+      },
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       }
     }
   },
   "productName": "UniversalOverlay",
-  "version": "0.7.0-beta.2",
+  "version": "0.7.0-beta.3",
   "identifier": "com.overlayed.dev",
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQUJGNzNEMDYzNEZCMzYKUldRMit6UUdQZmVyN0lGZ3dXWStmNFFrYStEckZqM1ZDWUtmZ1huZXA5TzFGa1gzMTZuM2xrSHEK",
       "endpoints": [
         "https://github.com/viktor-malieichyk/overlayed/releases/latest/download/latest.json",
-        "https://github.com/viktor-malieichyk/overlayed/releases/download/v0.7.0-beta.2/latest.json"
+        "https://github.com/viktor-malieichyk/overlayed/releases/download/v0.7.0-beta.3/latest.json"
       ]
     }
   },

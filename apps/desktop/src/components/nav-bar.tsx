@@ -94,12 +94,14 @@ export const NavBar = ({
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const trayHint = os === "macos" ? t("menu bar") : t("system tray");
+  const trayHint = os === "macos"
+    ? t("Use the menu bar icon to unpin the overlay or open settings.")
+    : t("Use the system tray icon to unpin the overlay or open settings.");
 
   return (
     <div
       data-placement-navbar
-      className={cn(opacity, "shrink-0 rounded-t-lg font-bold select-none bg-white dark:bg-zinc-900 p-2 px-3")}
+      className={cn(opacity, "shrink-0 rounded-t-lg font-semibold select-none bg-white dark:bg-zinc-900 px-4 py-2 text-sm")}
     >
       <div className="flex justify-between gap-2">
         <div
@@ -112,7 +114,7 @@ export const NavBar = ({
         >
           <img
             src={canary ? "/img/32x32-canary.png" : "/img/32x32.png"}
-            alt="logo"
+            alt=""
             draggable={false}
             className="mr-2 size-8 shrink-0"
           />
@@ -137,7 +139,7 @@ export const NavBar = ({
               />
             </button>
             <div className={cn("relative items-center", location.pathname === "/channel" ? "flex" : "hidden")}>
-              <button className="cursor-pointer" title={t("Enable pin")}>
+              <button className="cursor-pointer" title={t(pin ? "Unpin" : "Pin")} aria-label={t(pin ? "Unpin" : "Pin")}>
                 <Pin
                   size={20}
                   onClick={async () => {
@@ -151,9 +153,9 @@ export const NavBar = ({
                   {/* Arrow pointing up toward the pin button */}
                   <div className="absolute -top-3 right-0 h-0 w-0 border-x-[9px] border-b-[12px] border-x-transparent border-b-zinc-500" />
                   <div className="flex items-start gap-2">
-                    <p className="flex-1 leading-snug text-zinc-300">
+                    <p className="flex-1 pr-4 leading-snug text-zinc-300">
                       {t("Pinning hides this frame to only show the users in the call.")}{" "}
-                      {t("Unpin or access Settings anytime via the")} {trayHint}.
+                      {trayHint}
                     </p>
                     <button
                       onClick={dismissFtue}
@@ -169,6 +171,7 @@ export const NavBar = ({
             <button
               className="cursor-pointer"
               title={t("Settings")}
+              aria-label={t("Settings")}
               onClick={() => {
                 invoke("open_settings");
               }}

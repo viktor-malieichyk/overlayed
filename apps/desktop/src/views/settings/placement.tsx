@@ -166,8 +166,8 @@ export const Placement = () => {
   const vertical = Math.floor(anchorIndex / 3);
 
   return (
-    <div className="flex flex-col gap-2 text-sm">
-      <div className="flex h-8 items-center justify-between mx-2">
+    <div className="settings-stack">
+      <div className="settings-row">
         <label htmlFor="fixed-position" className="font-medium">
           {t("Fixed position")}
         </label>
@@ -179,24 +179,24 @@ export const Placement = () => {
         />
       </div>
       {fixed && (
-        <p className="text-xs text-zinc-400 mx-2">
+        <p className="settings-hint">
           {t(
-            "Fixed overlays are click-through. To change settings, start UniversalOverlay again or use its tray icon (Settings or Unpin)."
+            "Fixed position applies while pinned. Use the tray icon to open settings or unpin the overlay."
           )}
         </p>
       )}
       {response?.positioningSupported === false ? (
-        <p className="text-xs text-zinc-400 mx-2">
+        <p className="settings-hint">
           {t("Your desktop doesn't let apps place their own windows (Wayland). Drag the overlay instead.")}
         </p>
       ) : null}
-      <div className="mx-2 flex items-center justify-between gap-4">
+      <div className="settings-row">
         <label htmlFor="placement-display" className="font-medium">
           {t("Display")}
         </label>
         <select
           id="placement-display"
-          className="min-w-0 rounded border border-zinc-700 bg-zinc-800 px-2 py-1"
+          className="settings-select w-52"
           disabled={!enabled || !selected}
           value={selected ? String(monitors.indexOf(selected)) : ""}
           onChange={event => {
@@ -207,7 +207,7 @@ export const Placement = () => {
           {!selected && <option value="">{t("No displays found")}</option>}
           {monitors.map((monitor, index) => (
             <option key={index} value={index}>
-              {t("Display")} {index + 1} - {monitor.width} x {monitor.height}
+              {t("Display")} {index + 1} - {monitor.width} × {monitor.height}
               {monitor.primary ? ` ${t("(primary)")}` : ""}
             </option>
           ))}
@@ -215,7 +215,7 @@ export const Placement = () => {
       </div>
       {selected && (
         <div
-          className={cn("mx-2 flex items-center justify-center rounded-md bg-zinc-950 p-2", !enabled && "opacity-60")}
+          className={cn("flex items-center justify-center rounded-md bg-zinc-950 p-3", !enabled && "opacity-60")}
         >
           <fieldset
             aria-label={t("Overlay position")}
@@ -250,13 +250,13 @@ export const Placement = () => {
           </fieldset>
         </div>
       )}
-      <p className="min-h-4 text-xs text-zinc-400 mx-2" aria-live="polite">
+      <p className="settings-hint empty:hidden" aria-live="polite">
         {error
           ? t(error)
           : missing
             ? t("Saved display isn't connected. The primary display is used.")
             : !selected
-              ? t(response ? "No displays found." : "Loading displays...")
+              ? t(response ? "No displays found" : "Loading displays...")
               : null}
       </p>
       {[
@@ -277,7 +277,7 @@ export const Placement = () => {
       ].map(({ label, key, value, centered, resolution }) => (
         <div
           key={key}
-          className={cn("flex h-8 items-center justify-between mx-2", (!enabled || centered) && "opacity-40")}
+          className={cn("settings-row", (!enabled || centered) && "opacity-40")}
         >
           <label htmlFor={key} className="font-medium">
             {t(label)}
@@ -310,8 +310,8 @@ export const Placement = () => {
           </div>
         </div>
       ))}
-      <p className="mx-2 text-xs text-zinc-400">
-        {t("UniversalOverlay starts pinned. Use Unpin in the tray to move or interact with it.")}
+      <p className="settings-hint">
+        {t("Drag the title bar to move the unpinned overlay.")}
       </p>
     </div>
   );

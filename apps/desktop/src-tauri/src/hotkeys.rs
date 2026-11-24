@@ -23,6 +23,7 @@ pub enum HotkeyCommand {
   ToggleSpeakingOnly,
   NextMonitor,
   OpenSettings,
+  OpenHistory,
 }
 
 #[derive(Clone, Deserialize)]
@@ -269,18 +270,8 @@ pub async fn suspend_hotkeys(
 pub fn run_action(app: &AppHandle, command: HotkeyCommand) {
   let result = match command {
     HotkeyCommand::Pin => toggle_overlay_pin(app),
-    HotkeyCommand::OpenSettings => {
-      if let Some(settings) = app.get_webview_window(SETTINGS_WINDOW_NAME) {
-        for result in [settings.show(), settings.unminimize(), settings.set_focus()] {
-          if let Err(error) = result {
-            log::warn!("Could not open settings from hotkey: {error}");
-          }
-        }
-        Ok(())
-      } else {
-        Err("The settings window is unavailable".to_string())
-      }
-    }
+    HotkeyCommand::OpenSettings => commands::show_settings(app, false),
+    HotkeyCommand::OpenHistory => commands::show_settings(app, true),
     _ => app
       .emit_to(MAIN_WINDOW_NAME, HOTKEY_ACTION, command)
       .map_err(|error| error.to_string()),

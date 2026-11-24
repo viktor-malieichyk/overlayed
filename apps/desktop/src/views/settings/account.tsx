@@ -78,7 +78,7 @@ export const Developer = () => {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2 pb-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -87,7 +87,7 @@ export const Developer = () => {
               await invoke("open_overlay_devtools");
             }}
           >
-            {t("Open Devtools")}
+            {t("Open developer tools")}
           </Button>
           <Button
             size="sm"
@@ -96,11 +96,11 @@ export const Developer = () => {
               await invoke("open_config_dir");
             }}
           >
-            {t("Open Config Dir")}
+            {t("Open settings folder")}
           </Button>
         </div>
         {import.meta.env.DEV && (
-          <div className="flex flex-wrap gap-2 pb-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -108,7 +108,7 @@ export const Developer = () => {
                 localStorage.removeItem(FTUE_PIN_TRAY_TIP_KEY);
               }}
             >
-              {t("Reset FTUE tip")}
+              {t("Reset the pinning tip")}
             </Button>
             <Button
               size="sm"
@@ -117,10 +117,10 @@ export const Developer = () => {
                 void simulateTokenExpiryForTesting();
               }}
             >
-              {t("Expire Auth")}
+              {t("Expire authorization")}
             </Button>
             <Button size="sm" variant="outline" onClick={restoreTokenAfterTesting}>
-              {t("Restore Auth")}
+              {t("Restore authorization")}
             </Button>
             <Button
               size="sm"
@@ -129,7 +129,7 @@ export const Developer = () => {
                 await invoke("simulate_error_screen");
               }}
             >
-              {t("Simulate Error Screen")}
+              {t("Simulate the error screen")}
             </Button>
           </div>
         )}
@@ -158,13 +158,13 @@ export const AppInfo = () => {
     : `${FORK_REPOSITORY}/releases/tag/v${platformInfo.appVersion}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 pb-2 text-zinc-400">
+    <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
       <div>
         <p className="text-sm">
           <strong>{t("OS")}</strong> {platformInfo.os} {platformInfo.kernalVersion} {platformInfo.arch}
         </p>
       </div>
-      <span className="text-xs">/</span>
+      <span className="text-sm">/</span>
       <div>
         <p className="text-sm">
           <strong>Tauri</strong> {platformInfo.tauriVersion}
@@ -221,10 +221,10 @@ export const Account = () => {
   const avatarUrl = `https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`;
   return (
     <div>
-      <div className="space-y-3">
-        <div className="flex items-center mb-2">
+      <div className="space-y-4 text-sm">
+        <div className="flex items-center gap-3">
           {user?.id && (
-            <Avatar className="w-16 h-16 mr-3">
+            <Avatar className="size-12 shrink-0">
               <AvatarImage src={avatarUrl} />
               <AvatarFallback>U</AvatarFallback>
             </Avatar>
@@ -232,25 +232,25 @@ export const Account = () => {
           <div>
             {user?.id ? (
               <div>
-                <p className="mt-3 mb-3 font-bold">
+                <p className="break-all font-semibold">
                   {user?.global_name} ({user?.id})
                 </p>
               </div>
             ) : (
-              <p>{t("Please Login to use UniversalOverlay")}</p>
+              <p>{t("Connect to Discord to use UniversalOverlay.")}</p>
             )}
 
-            <div className="pb-4">
+            <div className="settings-hint">
               {tokenExpires && (
                 <p className="text-sm">
-                  <strong>{t("Token Expires")}</strong>{" "}
+                  <strong>{t("Token expires in")}</strong>{" "}
                   {dateFns.formatDistanceToNow(new Date(tokenExpires), { locale: language === "uk" ? uk : undefined })}
                 </p>
               )}
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 pb-2">
+        <div className="flex flex-wrap gap-2">
           <div>
             <Button
               size="sm"
@@ -277,7 +277,7 @@ export const Account = () => {
             >
               <DialogTrigger asChild>
                 <Button size="sm" disabled={!user?.id}>
-                  {t("Logout")}
+                  {t("Log out")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[80%]">
@@ -294,16 +294,16 @@ export const Account = () => {
                   }}
                 >
                   <DialogHeader>
-                    <DialogTitle className="mb-4 text-xl text-white">{t("Logout")}</DialogTitle>
-                    <DialogDescription className="mb-4 text-xl text-white">
+                    <DialogTitle>{t("Log out")}</DialogTitle>
+                    <DialogDescription>
                       {t("Are you sure you want to log out of UniversalOverlay?")}
                     </DialogDescription>
                   </DialogHeader>
-                  <DialogFooter>
+                  <DialogFooter className="mt-4">
                     <DialogClose asChild>
                       <Button variant="secondary">{t("Cancel")}</Button>
                     </DialogClose>
-                    <Button type="submit">{t("Confirm Logout")}</Button>
+                    <Button type="submit">{t("Log out")}</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -328,12 +328,12 @@ export const Account = () => {
                 }}
               >
                 <DialogHeader>
-                  <DialogTitle className="mb-4 text-xl text-white">{t("Quit UniversalOverlay")}</DialogTitle>
-                  <DialogDescription className="mb-4 text-xl text-white">
+                  <DialogTitle>{t("Quit UniversalOverlay")}</DialogTitle>
+                  <DialogDescription>
                     {t("Are you sure you want to quit the UniversalOverlay app?")}
                   </DialogDescription>
                 </DialogHeader>
-                <DialogFooter>
+                <DialogFooter className="mt-4">
                   <DialogClose asChild>
                     <Button variant="secondary">{t("Cancel")}</Button>
                   </DialogClose>

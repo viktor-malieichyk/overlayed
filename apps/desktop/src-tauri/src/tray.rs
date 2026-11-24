@@ -63,7 +63,7 @@ pub fn set_tray_language(app: AppHandle, language: &str) -> Result<(), String> {
 
   for (id, english, translated) in [
     (TRAY_SHOW_APP, "Show UniversalOverlay", "Показати UniversalOverlay"),
-    (TRAY_RELOAD, "Reload App", "Перезавантажити застосунок"),
+    (TRAY_RELOAD, "Reload app", "Перезавантажити застосунок"),
     (TRAY_SETTINGS, "Settings", "Налаштування"),
     (TRAY_JOIN_HISTORY, "History", "Історія"),
     (TRAY_QUIT, "Quit", "Закрити"),
@@ -87,7 +87,7 @@ pub fn set_tray_language(app: AppHandle, language: &str) -> Result<(), String> {
         .set_text(if ukrainian {
           "Показувати лише тих хто говорить"
         } else {
-          "Only show speakers"
+          "Only show users who are speaking"
         })
         .map_err(|error| error.to_string())?;
     }
@@ -109,14 +109,14 @@ pub struct Tray;
 impl Tray {
   pub fn create_tray_menu(app_handle: &AppHandle) -> Result<Menu<Wry>, tauri::Error> {
     let version = app_handle.package_info().version.to_string();
-    let speaking_only = CheckMenuItemBuilder::with_id(TRAY_SPEAKING_ONLY, "Only show speakers")
+    let speaking_only = CheckMenuItemBuilder::with_id(TRAY_SPEAKING_ONLY, "Only show users who are speaking")
       .checked(false)
       .build(app_handle)?;
     MenuBuilder::new(app_handle)
       .text(TRAY_TOGGLE_PIN, "Pin")
       .text(TRAY_SHOW_APP, "Show UniversalOverlay")
       .item(&speaking_only)
-      .text(TRAY_RELOAD, "Reload App")
+      .text(TRAY_RELOAD, "Reload app")
       .text(TRAY_SETTINGS, "Settings")
       .text(TRAY_JOIN_HISTORY, "History")
       .separator()
@@ -128,6 +128,7 @@ impl Tray {
   pub fn update_tray(app_handle: &AppHandle) -> Result<()> {
     let menu = Tray::create_tray_menu(app_handle)?;
     let _ = TrayIconBuilder::with_id(OVERLAYED)
+      .tooltip(app_handle.package_info().name.clone())
       .menu(&menu)
       .on_menu_event(Self::handle_menu_events)
       .build(app_handle)?;
@@ -173,16 +174,8 @@ impl Tray {
         }
       }
       TRAY_SETTINGS | TRAY_JOIN_HISTORY => {
-        if let Some(settings_window) = app.get_webview_window(SETTINGS_WINDOW_NAME) {
-          if event.id().as_ref() == TRAY_JOIN_HISTORY {
-            if let Err(error) =
-              settings_window.eval("window.location.hash = 'settings?tab=join-history';")
-            {
-              log::warn!("Could not select History: {error}");
-            }
-          }
-          settings_window.show().unwrap();
-          settings_window.set_focus().unwrap();
+        if let Err(error) = commands::show_settings(app, event.id().as_ref() == TRAY_JOIN_HISTORY) {
+          log::warn!("Could not open settings: {error}");
         }
       }
       TRAY_QUIT => {

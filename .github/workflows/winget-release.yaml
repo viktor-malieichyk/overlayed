@@ -6,10 +6,11 @@ on:
 
 jobs:
   publish:
+    if: vars.WINGET_PACKAGE_ID != ''
     runs-on: ubuntu-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@19e706d4c9121098010096f9c495a70a7518b30f
         with:
-          identifier: OverlayedDev.Overlayed
+          identifier: ${{ vars.WINGET_PACKAGE_ID }}
           version: ${{ github.event.release.tag_name }}
           token: ${{ secrets.WINGET_TOKEN }}

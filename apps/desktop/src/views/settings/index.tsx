@@ -32,16 +32,16 @@ export const SettingsView = () => {
         value={currentTab}
         onValueChange={tab => setSearchParams({ tab }, { replace: true })}
       >
-        <TabsList className="grid w-full shrink-0 grid-cols-5 rounded-t-none [&>button]:whitespace-normal [&>button]:text-xs [&>button]:leading-tight">
+        <TabsList className="grid w-full shrink-0 grid-cols-5 rounded-t-none [&>button]:whitespace-normal [&>button]:px-2 [&>button]:leading-tight">
           <TabsTrigger value="account">{t("General")}</TabsTrigger>
-          <TabsTrigger value="configuration">{t("Configuration")}</TabsTrigger>
+          <TabsTrigger value="configuration">{t("Overlay")}</TabsTrigger>
           <TabsTrigger value="placement">{t("Position")}</TabsTrigger>
           <TabsTrigger value="hotkeys">{t("Hotkeys")}</TabsTrigger>
           <TabsTrigger value="join-history">{t("History")}</TabsTrigger>
         </TabsList>
         {canary && (
-          <div className="h-[32px] shrink-0 bg-yellow-400 font-semibold text-black flex items-center justify-center">
-            <a target="_blank" href="https://overlayed.dev/canary#about">
+          <div className="shrink-0 bg-yellow-400 px-4 py-2 text-center text-sm font-medium text-black">
+            <a target="_blank" rel="noreferrer" href={`${FORK_REPOSITORY}/releases`}>
               <p>{t("The canary build may be unstable (click to learn more)")}</p>
             </a>
           </div>
@@ -51,13 +51,13 @@ export const SettingsView = () => {
             <Updater update={update} />
           </div>
         )}
-        <div className="min-h-0 flex-1 p-4 pt-0">
-          <TabsContent tabIndex={-1} value="account">
-            <div className="mb-3 flex items-center justify-between">
+        <div className="min-h-0 flex-1 overflow-hidden text-sm">
+          <TabsContent tabIndex={-1} value="account" className="settings-panel">
+            <div className="settings-row mb-4">
               <label htmlFor="language">{t("Language")}</label>
               <select
                 id="language"
-                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1"
+                className="settings-select"
                 value={language}
                 onChange={async event => {
                   await Config.set("language", event.target.value === "uk" ? "uk" : "en");
@@ -74,22 +74,22 @@ export const SettingsView = () => {
             </div>
             <Account />
           </TabsContent>
-          <TabsContent tabIndex={-1} value="configuration">
+          <TabsContent tabIndex={-1} value="configuration" className="settings-panel">
             <Configuration />
           </TabsContent>
-          <TabsContent tabIndex={-1} value="placement">
+          <TabsContent tabIndex={-1} value="placement" className="settings-panel">
             <Placement />
           </TabsContent>
-          <TabsContent tabIndex={-1} value="hotkeys">
+          <TabsContent tabIndex={-1} value="hotkeys" className="settings-panel">
             <Hotkeys />
           </TabsContent>
-          <TabsContent tabIndex={-1} value="join-history" className="h-full">
+          <TabsContent tabIndex={-1} value="join-history" className="settings-panel settings-history-panel">
             <JoinHistory />
           </TabsContent>
         </div>
-        <div className="flex min-h-10 w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-800 px-4 py-2 text-xs">
+        <div className="flex min-h-10 w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-zinc-800 px-4 py-2 text-sm">
           <a className="text-blue-400" target="_blank" rel="noreferrer" href={FORK_REPOSITORY}>
-            {t("This fork on GitHub")}
+            {t("UniversalOverlay on GitHub")}
           </a>
           <a className="text-blue-400" target="_blank" rel="noreferrer" href={UPSTREAM_REPOSITORY}>
             {t("Original Overlayed project on GitHub")}

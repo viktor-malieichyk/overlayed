@@ -1,28 +1,14 @@
-# Generating the icons
+# UniversalOverlay icons
 
-It's best to place the icon somewhere on the FS and run this and it will generate them.
+- `icon.svg` is the app mark. Generate the stable and Canary bundle
+  assets and the desktop WebView images from this source.
+- `tray/windows.svg` and `tray/windows-pinned.svg` are the Windows tray
+  variants. Keep the letters on the 16 px pixel grid.
+- `tray/icon-pinned.svg` is the pinned tray variant for other platforms.
+  The unpinned icon uses the main app mark.
 
-### Main icons sets
-
-```
-# make sure you're in the apps/desktop/src-tauri folder
-
-# normal
-cargo tauri icon ./icon.png --output icons/normal
-
-# canary
-cargo tauri icon ./canary.png --output icons/canary
-
-```
-
-### Tray icon
-
-I was running into issues on linux exporting the 32x32 directly from figma so i scaled it to 512x512 and use the `tauri-cli` as suggested from.
-https://github.com/tauri-apps/tauri/issues/6117
-
-```
-# for default
-cargo tauri icon icon.png -o ./default
-# for pinned
-cargo tauri icon icon-pinned.png -o ./pinned
-```
+Run `cargo tauri icon <source.svg> --output <temporary-directory>` from
+`apps/desktop/src-tauri`. Copy the matching generated files to the
+existing bundle and tray paths. Refresh `public/img/icon.png`,
+`public/img/32x32.png` and `public/img/32x32-canary.png` from the main mark.
+The NSIS installers use the same stable or Canary `icon.ico` as the app.

@@ -10,25 +10,24 @@ cargo tauri build --target "universal-apple-darwin" --bundles "dmg"
 # sign
 # NOTE: It seems tauri has this logic baked in
 #
-# codesign --force -s "$APPLE_SIGNING_IDENTITY" --options=runtime --deep src-tauri/target/release/bundle/macos/overlayed.app -v
+# codesign --force -s "$APPLE_SIGNING_IDENTITY" --options=runtime --deep src-tauri/target/release/bundle/macos/UniversalOverlay.app -v
 #
 # # store creds
 # xcrun notarytool store-credentials "notarytool-profile" --apple-id "$APPLE_ID" --team-id="$APPLE_TEAM_ID" --password "$APPLE_PASSWORD"
 #
 # # zip the app
 # cd src-tauri/target/release/bundle/macos
-# zip -r overlayed-aarch64-apple-darwin.zip overlayed.app
+# zip -r UniversalOverlay-aarch64-apple-darwin.zip UniversalOverlay.app
 #
 # # notarize the app in the zip
-# xcrun notarytool submit "overlayed-aarch64-apple-darwin.zip" --keychain-profile "notarytool-profile" --wait
+# xcrun notarytool submit "UniversalOverlay-aarch64-apple-darwin.zip" --keychain-profile "notarytool-profile" --wait
 
-# search for all .exe files in the current directory
 baseDir="src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis"
-windowsBinaries=$(find . -type f -name "overlayed_*.exe")
-
-echo "binary path: ${baseDir}"
-# get file from last part of the path
-filename=$(basename -- "$windowsBinaries")
+filename=$(node -p 'const { productName, version } = require("./src-tauri/tauri.conf.json"); `${productName}_${version}_x64-setup.exe`')
+if [ ! -f "$baseDir/$filename" ]; then
+  echo "Installer missing: $baseDir/$filename" >&2
+  exit 1
+fi
 
 echo "Signing: ${filename}"
 docker run -it --rm -v "./$baseDir:/code" ghcr.io/sslcom/codesigner:latest sign \

@@ -14,40 +14,26 @@ export const MainView = () => {
   }, []);
 
   return (
-    <div className="min-h-0 flex-1 bg-zinc-900 px-4 py-3">
-      <div className="pt-1 mb-3 font-bold text-2xl text-center">
-        <p className="mb-2">{t(discordReady ? "Authorize Discord" : "Connect to Discord")}</p>
-        <p className="text-sm text-center text-zinc-400">
-          {t("UniversalOverlay is not affiliated with Discord. Discord is a trademark of Discord Inc.")}
-        </p>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-zinc-900 p-4 text-sm">
+      <div className="flex flex-col gap-4 text-center">
+        <h1 className="text-xl font-semibold">{t(discordReady ? "Authorize in Discord" : "Connect to Discord")}</h1>
         {discordReady ? (
-          <ul className="mt-3 flex list-decimal flex-col gap-2 py-3 pl-7 text-left text-base">
-            <li>
-              <p className="leading-8">{t("Discord should have opened a popup")}</p>
-            </li>
-            <li>
-              <p className="leading-8">{t('Click "Authorize" within Discord')}</p>
-            </li>
-            <li>
-              <p className="leading-8">{t("Join a voice channel")}</p>
-            </li>
-            <li>
-              <p className="leading-8">{t("Enjoy 🥳")}</p>
-            </li>
-          </ul>
+          <ol className="list-decimal space-y-2 pl-5 text-left">
+            <li>{t("Open the authorization prompt in Discord.")}</li>
+            <li>{t('Select "Authorize" in Discord.')}</li>
+            <li>{t("Join a voice channel.")}</li>
+          </ol>
         ) : (
-          <p className="my-4 text-base font-normal">
-            {t("Open the Discord desktop app. UniversalOverlay will connect automatically.")}
-          </p>
+          <p>{t("Open the Discord desktop app. UniversalOverlay will connect automatically.")}</p>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <Button
             onClick={() => {
               window.dispatchEvent(new Event(RETRY_AUTH_EVENT));
             }}
           >
-            {t(discordReady ? "Try Again" : "Check for Discord")}
+            {t(discordReady ? "Try again" : "Check for Discord")}
           </Button>
 
           <Button
@@ -59,6 +45,9 @@ export const MainView = () => {
             {t("Quit UniversalOverlay")}
           </Button>
         </div>
+        <p className="settings-hint">
+          {t("UniversalOverlay is not affiliated with Discord. Discord is a trademark of Discord Inc.")}
+        </p>
       </div>
     </div>
   );

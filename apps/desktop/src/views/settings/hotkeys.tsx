@@ -10,11 +10,12 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useRef, useState } from "react";
 
 const commands: { command: HotkeyCommand; label: string }[] = [
-  { command: "pin", label: "Lock / unlock overlay" },
-  { command: "toggle-visibility", label: "Show / hide overlay" },
+  { command: "pin", label: "Pin or unpin the overlay" },
+  { command: "toggle-visibility", label: "Show or hide the overlay" },
   { command: "next-monitor", label: "Next monitor (fixed position)" },
   { command: "open-settings", label: "Open settings" },
-  { command: "toggle-speaking-only", label: "Toggle speaking-only overlay" },
+  { command: "open-history", label: "Open History in settings" },
+  { command: "toggle-speaking-only", label: "Toggle speakers-only mode" },
 ];
 
 function bindingLabel(active: boolean, binding: HotkeyBinding | undefined, macos: boolean) {
@@ -168,7 +169,7 @@ export const Hotkeys = () => {
           if (activeRecording.current === recording) await cancel();
         }
       } catch (error) {
-        if (mounted.current) setMessages(previous => ({ ...previous, [recording]: String(error) }));
+        if (mounted.current) setMessages(previous => ({ ...previous, [recording]: typeof error === "string" ? error : "Couldn't save this hotkey. Try again." }));
       } finally {
         releaseWaiter.current?.resolve();
         releaseWaiter.current = null;
@@ -231,10 +232,10 @@ export const Hotkeys = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2 text-sm" data-hotkeys-panel>
-      <p className="text-xs text-zinc-400">{t("The next-monitor hotkey only works with Fixed position.")}</p>
+    <div className="settings-stack" data-hotkeys-panel>
+      <p className="settings-hint">{t("The next-monitor hotkey only works with Fixed position.")}</p>
       {status?.supported === false && (
-        <p className="text-xs text-zinc-400">{t("Global hotkeys don't work on Wayland.")}</p>
+        <p className="settings-hint">{t("Global hotkeys don't work on Wayland.")}</p>
       )}
       {commands.map(({ command, label }) => {
         const binding = bindings.find(binding => binding.command === command);
@@ -242,13 +243,16 @@ export const Hotkeys = () => {
         // The Wayland note covers every binding without repeating the same
         // error four times and pushing the rows into the fixed footer.
         const message = messages[command] ?? (status?.suspended || status?.supported === false ? null : result?.error);
+        const displayMessage = message?.startsWith("Couldn't register shortcut:")
+          ? "Couldn't register shortcut."
+          : message;
         const active = recording === command;
         return (
-          <div key={command} className="rounded-md border border-zinc-700 px-3 py-2">
+          <div key={command} className="settings-card">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-medium">{t(label)}</p>
-                <p className="truncate text-xs text-zinc-400" title={binding?.key}>
+                <p className="settings-hint break-words" title={binding?.key}>
                   {t(bindingLabel(active, binding, macos))}
                 </p>
               </div>
@@ -257,7 +261,7 @@ export const Hotkeys = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="min-h-7 px-2 text-xs"
+                  className="px-3"
                   disabled={busy || !status?.supported || (!!recording && !active)}
                   aria-label={`${t(active ? "Cancel recording" : "Record hotkey")}: ${t(label)}`}
                   onClick={() => (active ? cancel() : startRecording(command))}
@@ -268,7 +272,7 @@ export const Hotkeys = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="min-h-7 px-2 text-xs"
+                  className="px-3"
                   disabled={busy || !!recording || !binding}
                   aria-label={`${t("Clear hotkey")}: ${t(label)}`}
                   onClick={() => clear(command)}
@@ -277,16 +281,16 @@ export const Hotkeys = () => {
                 </Button>
               </div>
             </div>
-            {message && (
-              <p className="mt-1 break-words text-xs text-red-400" role="alert" title={t(message)}>
-                {t(message)}
+            {displayMessage && (
+              <p className="mt-2 break-words text-sm text-red-400" role="alert" title={t(displayMessage)}>
+                {t(displayMessage)}
               </p>
             )}
           </div>
         );
       })}
       {error && (
-        <p className="text-xs text-red-400" role="alert">
+        <p className="text-sm text-red-400" role="alert">
           {t(error)}
         </p>
       )}

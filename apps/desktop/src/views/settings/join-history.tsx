@@ -19,9 +19,9 @@ function formatDuration(milliseconds: number) {
 }
 
 const options = [
-  { key: "showHistoryJoinsAndLeaves", label: "Show joins and leaves" },
-  { key: "showHistoryVoiceActivity", label: "Show voice activity" },
-  { key: "joinHistoryNotifications", label: "Enable join/leave notifications" },
+  { key: "showHistoryJoinsAndLeaves", label: "Show join and leave events" },
+  { key: "showHistoryVoiceActivity", label: "Show speaking events" },
+  { key: "joinHistoryNotifications", label: "Notify when users join or leave" },
 ] as const;
 
 export const JoinHistory = () => {
@@ -55,9 +55,9 @@ export const JoinHistory = () => {
   const dateFormat = new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "medium" });
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <p className="mb-2 shrink-0 text-sm text-gray-400">{t("Voice channel activity from the last 24 hours")}</p>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 pb-2">
+    <div className="flex h-full min-h-0 flex-col gap-2 text-sm">
+      <p className="settings-hint shrink-0">{t("Voice channel activity from the last 24 hours")}</p>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
         {options.map(({ key, label }, index) => (
           <div key={key} className="flex items-center gap-2">
             <Checkbox
@@ -81,11 +81,14 @@ export const JoinHistory = () => {
             await emit(Event.ClearVoiceHistory);
           }}
         >
-          <span className="mr-2">{t("Clear list")}</span>
+          <span className="mr-2">{t("Clear history")}</span>
           <Trash size={18} />
         </Button>
       </div>
-      <ol aria-label={t("History")} className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-3">
+      <ol
+        aria-label={t("History")}
+        className="min-h-0 min-w-0 flex-1 divide-y divide-zinc-800 overflow-y-auto pr-2 [scrollbar-gutter:stable]"
+      >
         {visibleLog.map(item => {
           const date = new Date(item.timestamp);
           const time = dateFormat.format(date);
@@ -94,28 +97,31 @@ export const JoinHistory = () => {
           const color = { join: "text-green-500", leave: "text-red-500", speaking: "text-pink-400" }[item.event];
           const details = [t(item.event), item.room ?? t("Private call"), duration].filter(Boolean).join(" · ");
           return (
-            <li key={item.key} className="flex flex-wrap items-center gap-x-2 text-sm">
+            <li key={item.key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 py-2">
+
               <Icon size={16} aria-hidden className={cn(color, "shrink-0")} />
-              <button
-                type="button"
-                className="break-all font-medium hover:underline"
-                onClick={async () => {
-                  const discordTime = `<t:${Math.floor(item.timestamp / 1000)}:F>`;
-                  await navigator.clipboard.writeText(`${item.username} (${details}) <@${item.id}> ${discordTime}`);
-                  toast({ title: t("User Info Copied"), variant: "success", duration: 3000 });
-                }}
-              >
-                {item.username}
-              </button>
-              <span className="break-all text-gray-300">{details}</span>
-              <time className="ml-auto whitespace-nowrap tabular-nums text-gray-400" dateTime={date.toISOString()}>
+              <div className="min-w-0 [overflow-wrap:anywhere]">
+                <button
+                  type="button"
+                  className="block max-w-full text-left font-medium [overflow-wrap:anywhere] hover:underline"
+                  onClick={async () => {
+                    const discordTime = `<t:${Math.floor(item.timestamp / 1000)}:F>`;
+                    await navigator.clipboard.writeText(`${item.username} (${details}) <@${item.id}> ${discordTime}`);
+                    toast({ title: t("User info copied"), variant: "success", duration: 3000 });
+                  }}
+                >
+                  {item.username}
+                </button>
+                <span className="text-zinc-300">{details}</span>
+              </div>
+              <time className="max-w-36 text-right tabular-nums text-zinc-400 [overflow-wrap:anywhere]" dateTime={date.toISOString()}>
                 {time}
               </time>
             </li>
           );
         })}
+        {visibleLog.length === 0 && <li className="settings-hint py-2">{t("No matching events")}</li>}
       </ol>
-      {visibleLog.length === 0 && <p className="text-sm text-gray-400">{t("No matching activity")}</p>}
     </div>
   );
 };

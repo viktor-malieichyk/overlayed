@@ -8,13 +8,22 @@ use tauri::{image::Image, menu::Menu, AppHandle, Emitter, Manager, State, Webvie
 use crate::{constants::*, Pinned, TaskbarHideMode, TrayMenu};
 
 #[tauri::command]
-pub fn open_settings(window: WebviewWindow) {
-  let app = window.app_handle();
-  let settings_windows = app.get_webview_window(SETTINGS_WINDOW_NAME);
-  if let Some(settings_windows) = settings_windows {
-    settings_windows.show();
-    settings_windows.set_focus();
-  }
+pub fn open_settings(window: WebviewWindow) -> Result<(), String> {
+  show_settings(window.app_handle(), false)
+}
+
+pub(crate) fn show_settings(app: &AppHandle, history: bool) -> Result<(), String> {
+  let result = (|| -> tauri::Result<()> {
+    let settings = app.get_webview_window(SETTINGS_WINDOW_NAME)
+      .ok_or(tauri::Error::WindowNotFound)?;
+    if history {
+      settings.eval("window.location.hash = '/settings?tab=join-history';")?;
+    }
+    settings.show()?;
+    settings.unminimize()?;
+    settings.set_focus()
+  })();
+  result.map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -166,6 +175,13 @@ fn _set_pin(
 }
 
 pub fn update_tray_icon(app: &AppHandle, pinned: bool) {
+  #[cfg(windows)]
+  let icon_bytes = if pinned {
+    include_bytes!("../icons/tray/windows-pinned.ico").as_slice()
+  } else {
+    include_bytes!("../icons/tray/windows.ico").as_slice()
+  };
+  #[cfg(not(windows))]
   let icon_bytes = if pinned {
     include_bytes!("../icons/tray/icon-pinned.ico").as_slice()
   } else {

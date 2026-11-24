@@ -515,7 +515,7 @@ class SocketManager {
         this.login(text.access_token);
       } catch {
         if (!this.isCurrent(generation)) return;
-        this.store.pushError("Could not get a token from Discord, try again");
+        this.store.pushError("Couldn't get an authorization token from Discord. Try again.");
         this.navigate("/error");
       }
     }
@@ -555,7 +555,8 @@ class SocketManager {
         return;
       }
 
-      this.store.pushError(payload.data.message);
+      console.warn("Discord authorization failed", payload.data.message);
+      this.store.pushError("Discord authorization failed. Try again.");
 
       // move to the error page
       this.navigate("/error");

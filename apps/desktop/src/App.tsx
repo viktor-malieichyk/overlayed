@@ -56,7 +56,7 @@ function App() {
     <div
       ref={rootRef}
       className={cn(
-        `text-white h-screen select-none rounded-lg flex flex-col ${visibleClass}`,
+        `text-white h-screen select-none rounded-lg flex flex-col font-sans text-sm ${visibleClass}`,
         channelPlacement && "overflow-hidden",
         // A fully transparent Windows overlay pixel passes clicks through to the app underneath.
         visible && !pin && !isSettingsWindow && "bg-black/5",

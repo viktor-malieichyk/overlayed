@@ -30,7 +30,7 @@ export const Updater = ({ update }: { update: Update }) => {
   };
 
   return (
-    <div className="mb-3 rounded-md border border-zinc-700 bg-zinc-800 p-3">
+    <div className="settings-card bg-zinc-800 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">
           {t("Update available")} {update.version}
